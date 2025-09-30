@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Advanced Filter & Smart Search</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f2f5;
+      padding: 40px;
+      color: #333;
+    }
+
+    h2 {
+      text-align: center;
+      color: #2c3e50;
+    }
+
+    .search-bar {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .search-bar input {
+      width: 60%;
+      padding: 12px 15px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      transition: all 0.3s ease;
+    }
+
+    .search-bar input:focus {
+      border-color: #007bff;
+      outline: none;
+      box-shadow: 0 0 5px rgba(0,123,255,0.3);
+    }
+
+    .filter-section {
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+
+    .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    select, input[type="text"] {
+      padding: 10px 12px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      flex: 1;
+    }
+
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .btn.add { background: #28a745; color: #fff; }
+    .btn.apply { background: #007bff; color: #fff; }
+    .btn.reset { background: #dc3545; color: #fff; }
+    .btn.remove { background: #ffc107; color: #333; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #eee;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f8f9fa;
+      font-weight: 600;
+    }
+
+    .highlight {
+      background-color: yellow;
+      font-weight: bold;
+    }
+
+    @media (max-width: 768px) {
+      .search-bar input {
+        width: 90%;
+      }
+
+      .filter-group {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body>
+
+
+<div class="search-bar">
+  <input type="text" id="globalSearch" placeholder="🔍 Search across all columns..." onkeyup="applyFilters()">
+</div>
+
+<div class="filter-section">
+  <div id="filterContainer"></div>
+  <div>
+    <button class="btn add" onclick="addFilter()">➕ Add Filter</button>
+    <button class="btn apply" onclick="applyFilters()">🔍 Apply</button>
+    <button class="btn reset" onclick="resetFilters()">♻️ Reset</button>
+  </div>
+</div>
+
+<table id="data-table">
+
+<script>
+  const table = document.getElementById("dataTable");
+  const headers = table.querySelectorAll("thead th");
+  const filterContainer = document.getElementById("filterContainer");
+  const globalSearchInput = document.getElementById("globalSearch");
+
+  let filterCount = 0;
+
+  function addFilter() {
+    const div = document.createElement("div");
+    div.className = "filter-group";
+    div.id = `filter-${filterCount}`;
+
+    const select = document.createElement("select");
+    headers.forEach((header, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = `🔽 ${header.textContent}`;
+      select.appendChild(option);
+    });
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.placeholder = "Enter filter value";
+
+    const removeBtn = document.createElement("button");
+    removeBtn.textContent = "✖️";
+    removeBtn.className = "btn remove";
+    removeBtn.onclick = () => div.remove();
+
+    div.appendChild(select);
+    div.appendChild(input);
+    div.appendChild(removeBtn);
+    filterContainer.appendChild(div);
+    filterCount++;
+  }
+
+  function applyFilters() {
+    const rows = table.querySelectorAll("tbody tr");
+    const filters = filterContainer.querySelectorAll(".filter-group");
+    const globalText = globalSearchInput.value.trim().toLowerCase();
+
+    rows.forEach(row => {
+      let cells = Array.from(row.cells);
+      let match = true;
+
+      // Global Search
+      if (globalText) {
+        const allText = cells.map(td => td.textContent.toLowerCase()).join(" ");
+        match = allText.includes(globalText);
+      }
+
+      // Individual column filters
+      filters.forEach(group => {
+        const select = group.querySelector("select");
+        const input = group.querySelector("input").value.trim().toLowerCase();
+        const colIndex = parseInt(select.value);
+        const cellText = row.cells[colIndex].textContent.toLowerCase();
+
+        if (input && !cellText.includes(input)) {
+          match = false;
+        }
+      });
+
+      row.style.display = match ? "" : "none";
+
+      // Highlight matches
+      cells.forEach(cell => {
+        let text = cell.textContent;
+        cell.innerHTML = text;
+
+        if (globalText && text.toLowerCase().includes(globalText)) {
+          const regex = new RegExp(`(${globalText})`, "gi");
+          cell.innerHTML = text.replace(regex, '<span class="highlight">$1</span>');
+        }
+      });
+    });
+  }
+
+  function resetFilters() {
+    globalSearchInput.value = "";
+    filterContainer.innerHTML = "";
+    document.querySelectorAll("tbody tr").forEach(tr => {
+      tr.style.display = "";
+      tr.querySelectorAll("td").forEach(td => td.innerHTML = td.textContent);
+    });
+    filterCount = 0;
+    addFilter(); // Add initial filter row
+  }
+
+  addFilter(); // Load default filter
+</script>
+
+</body>
+</html>

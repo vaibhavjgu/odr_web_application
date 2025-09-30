@@ -1,0 +1,177 @@
+/* General Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* --- NEW COLOR PALETTE --- */
+    /* I've chosen the rich purple from the '?' icon as the new primary color. 
+       It's professional, associated with academia, and stands out nicely. */
+    --primary-color: #6A2C91; 
+    /* A new gradient using shades of purple for a smoother, more elegant button. */
+    --primary-gradient: linear-gradient(45deg, #7E3A9C, #4A235A);
+    /* Darker, more neutral text for better contrast and a more modern feel. */
+    --text-primary: #1D2B3A; 
+    --text-secondary: #6c757d;
+    --input-bg: #fdfdff; /* Slightly brighter input background */
+    --input-border: #ced4da;
+    --error-color: #e74c3c;
+    /* Increased opacity for better readability on the complex background. */
+    --card-background: rgba(255, 255, 255, 0.92); 
+    --card-shadow: 0 10px 35px 0 rgba(40, 50, 90, 0.1);
+    --card-border: 1px solid rgba(255, 255, 255, 0.6);
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: url("ODR-Dashboard-White.jpg") no-repeat center center fixed;
+    background-size: cover;
+}
+
+.container {
+    padding: 20px;
+}
+
+/* Enhanced "Glassmorphism" Card */
+.card {
+    width: 100%;
+    max-width: 400px;
+    padding: 40px 35px;
+    background: var(--card-background);
+    backdrop-filter: blur(12px); /* Slightly reduced blur to complement higher opacity */
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 20px;
+    border: var(--card-border);
+    box-shadow: var(--card-shadow);
+    text-align: center;
+}
+
+/* Typography */
+.title {
+    font-size: 24px; /* Slightly adjusted for balance */
+    font-weight: 700;
+    margin-bottom: 25px;
+    color: var(--text-primary);
+    line-height: 1.2;
+}
+
+.subtitle {
+    font-size: 16px;
+    font-weight: 400;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+}
+
+/* Input Fields with Icons */
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-icon {
+    position: absolute;
+    top: 50%;
+    left: 15px;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+.form-control {
+    width: 100%;
+    padding: 15px 15px 15px 45px; /* Left padding for icon */
+    border: 1px solid var(--input-border);
+    border-radius: 10px;
+    font-size: 16px;
+    background-color: var(--input-bg);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-control::placeholder {
+    color: #aaa;
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    /* Updated shadow to match the new primary color */
+    box-shadow: 0 0 0 3px rgba(106, 44, 145, 0.2); 
+}
+
+.form-control:focus + .input-icon,
+.input-group:focus-within .input-icon {
+    color: var(--primary-color);
+}
+
+/* Password Toggle Icon */
+#togglePassword {
+    position: absolute;
+    top: 50%;
+    right: 15px;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+#togglePassword:hover {
+    color: var(--primary-color);
+}
+
+/* Button Styling */
+.btn-primary {
+    width: 100%;
+    padding: 15px;
+    border: none;
+    border-radius: 10px;
+    background: var(--primary-gradient);
+    color: white;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.3s ease;
+    margin-top: 10px;
+}
+
+.btn-primary:hover {
+    /* Updated shadow to match the new primary color */
+    box-shadow: 0 6px 20px rgba(74, 35, 90, 0.35);
+}
+
+.btn-primary:active {
+    transform: scale(0.98);
+}
+
+/* Extra Links (Forgot Password) */
+.extra-links {
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.forgot-password {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.forgot-password:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+/* Error Message */
+.error-message {
+    color: var(--error-color);
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 20px; /* Prevents layout shift when message appears */
+}

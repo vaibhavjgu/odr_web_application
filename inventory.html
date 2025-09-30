@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IT Inventory Management</title>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- The new, unified application stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- SheetJS Library for Excel Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Tailwind CSS (Used for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <!-- Overlay for mobile menu -->
+    <div class="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- ===== Shared Sidebar ===== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-branding">
+                    <img src="https://placehold.co/40x40/6366f1/white?text=U" alt="University Logo" class="sidebar-logo"> 
+                    <h1 class="sidebar-title">Quick Access</h1>
+                </div>
+                <!-- Button to collapse the sidebar on desktop -->
+                <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+            </div>
+            <!-- PASTE THIS ENTIRE BLOCK INTO YOUR HTML FILES -->
+            <nav class="sidebar-nav">
+                <a href="welcome.html" class="nav-item"> <!-- Update with your Home page link when ready -->
+                    <i class="fa-solid fa-house"></i>
+                    <span class="nav-text">Home</span>
+                </a>
+                <a href="externalGrant.html" class="nav-item">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="nav-text">External Grants</span>
+                </a>
+                <a href="internalGrant.html" class="nav-item">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span class="nav-text">Internal Grants</span>
+                </a>
+                <a href="inventory.html" class="nav-item active"> <!-- Also updated the inventory link -->
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="nav-text">Inventory</span>
+                </a>
+                <a href="sopsAndTemplates.html" class="nav-item"> <!-- Update with your SOP page link when ready -->
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span class="nav-text">SOP and Template</span>
+                </a>
+            </nav>
+            <!-- END OF BLOCK TO PASTE -->
+            <div class="sidebar-footer">
+                <div class="profile-section">
+                    <img src="https://placehold.co/36x36/e2e8f0/475569?text=U" alt="User Avatar" class="profile-avatar">
+                    <span class="username">User</span>
+                </div>
+                <button type="button" id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ===== Main Content Area ===== -->
+        <main class="main-content">
+            <header class="main-header">
+                <!-- Hamburger menu for mobile/tablet -->
+                <button type="button" class="hamburger-btn" id="sidebarToggleBtn" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h2 id="main-header-title">IT Inventory Management</h2>
+            </header>
+            
+            <!-- This div wraps the main view, allowing it to be hidden when the form is shown -->
+            <div id="mainDataView">
+                <!-- Stat Cards -->
+                <section class="stat-cards-container">
+                    <div class="stat-card">
+                        <div class="card-icon bg-sky-100 text-sky-600"><i class="fa-solid fa-boxes-stacked"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Total Assets</p>
+                            <p id="stat-total-assets" class="card-value">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-icon bg-emerald-100 text-emerald-600"><i class="fa-solid fa-user-check"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Assigned</p>
+                            <p id="stat-assigned-assets" class="card-value">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-icon bg-amber-100 text-amber-600"><i class="fa-solid fa-warehouse"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">In Stock</p>
+                            <p id="stat-instock-assets" class="card-value">0</p>
+                        </div>
+                    </div>
+                     <div class="stat-card">
+                        <div class="card-icon bg-rose-100 text-rose-600"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Warranty Alerts</p>
+                            <p id="stat-warranty-alerts" class="card-value">0</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Controls: Buttons, Filters, Search -->
+                <div class="table-controls">
+                    <div class="main-actions">
+                        <button type="button" id="addAssetBtn" class="btn btn-primary">
+                            <i class="fa-solid fa-plus mr-2"></i> Add New Asset
+                        </button>
+                        <button type="button" id="exportBtn" class="btn btn-secondary">
+                            <i class="fa-solid fa-file-excel mr-2"></i> Export
+                        </button>
+                    </div>
+                    <div class="filters-and-search">
+                         <div class="filter-group">
+                             <select id="statusFilter" class="filter-select">
+                                 <option value="">All Statuses</option>
+                                 <option value="In Stock">In Stock</option>
+                                 <option value="Assigned">Assigned</option>
+                                 <option value="Under Maintenance">Under Maintenance</option>
+                                 <option value="Scrapped">Scrapped</option>
+                                 <option value="Returned">Returned</option>
+                             </select>
+                         </div>
+                        <div class="search-bar">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="globalSearchInput" placeholder="Search by item, tag, user...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Table -->
+                <div class="table-container">
+                    <table id="inventoryTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Sl No.</th>
+                                <th>Asset Category</th>
+                                <th>Item</th>
+                                <th>Tag No.</th>
+                                <th>Status</th>
+                                <th>Assigned To</th>
+                                <th>Warranty Expiry</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="grantTableBody">
+                            <!-- Table rows will be inserted here by inventory.js -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Pagination -->
+                <nav class="pagination-container" aria-label="Table navigation">
+                    <span class="pagination-info" id="paginationInfo"></span>
+                    <ul class="pagination-list" id="paginationList">
+                        <!-- Pagination links will be built by inventory.js -->
+                    </ul>
+                </nav>
+            </div>
+        </main>
+    </div>
+
+<!-- Modal for ADDING/EDITING - CORRECTED STRUCTURE -->
+<div id="formModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="formModalTitle" class="text-xl font-bold text-gray-800">Add New Asset</h2>
+            <button type="button" class="modal-close-btn" aria-label="Close">&times;</button>
+        </div>
+        
+        <!-- The <form> tag is now here, wrapping the body and footer -->
+        <form id="assetForm" class="modal-form-container">
+            <div class="modal-body">
+                <!-- The existing form generation logic will populate this container. -->
+                <div id="formContainer">
+                    <!-- Form fields will be dynamically generated here inside fieldsets -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary modal-close-btn">Cancel</button>
+                <button type="submit" id="saveBtn" class="btn btn-primary">Save Asset</button>
+            </div>
+        </form>
+        
+    </div>
+</div>
+    
+    <!-- Modal for VIEWING - Refactored with new classes -->
+    <div id="viewModal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="text-xl font-bold text-gray-800">Asset Details</h2>
+                <button type="button" class="modal-close-btn" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="viewDetailsContainer">
+                    <!-- Asset details will be injected here by inventory.js -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary modal-close-btn">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/inventory.js"></script>
+</body>
+</html>

@@ -1,0 +1,2343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>External Grant Research Data</title>
+    <!-- ... other head elements like title, meta, css ... -->
+    
+    <!-- TAILWIND CSS - This styles the accordion form primarily -->
+
+    <!-- === ADD THIS LINE FOR CHARTS === -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ADD THIS LINE FOR CHART DATALABELS -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    
+    <!-- Defer custom JS loading for externalGrant.js -->
+    <!-- ... rest of the head ... -->
+    <script>
+    const token = localStorage.getItem('accessToken');
+    if (!token) {
+        // If there's no token, the user is not logged in.
+        // Alert the user and redirect them to the login page immediately.
+        alert('Access Denied. You must be logged in to view this page.');
+        window.location.href = '/'; // Redirects to the root (your login page)
+    }
+
+
+    
+    </script>
+
+    <!-- YOUR ORIGINAL PAGE CSS - This styles the header, sidebar, table container etc. -->
+    <link rel="stylesheet" href="css/main.css?v=1.1">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
+    <!-- TAILWIND CSS - This styles the accordion form primarily -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Defer custom JS loading for externalGrant.js -->
+    <script src="js/externalGrant.js?v=1.1" defer></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <style>
+    .existing-file-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 8px;
+        background-color: #f1f5f9; /* Tailwind gray-100 */
+        border-radius: 4px;
+        border: 1px solid #e2e8f0; /* Tailwind gray-200 */
+        margin-bottom: 4px;
+    }
+    .existing-file-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .btn-remove-file {
+        background: none; border: none; color: #ef4444; /* red-500 */
+        font-weight: bold; cursor: pointer; font-size: 1.2rem;
+        padding: 0 4px; line-height: 1;
+    }
+    .btn-remove-file:hover { color: #b91c1c; /* red-700 */ }
+</style>
+
+</head>
+<body class="bg-gray-100"> <!-- Tailwind's bg-gray-100 for overall background -->
+
+    <div class="sidebar-overlay"></div>
+    <!-- Header Section (from old HTML) -->
+    <div class="app-container">
+    <!-- ===== Sidebar ===== -->
+     <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-branding">
+                    <img src="https://placehold.co/40x40/6366f1/white?text=U" alt="University Logo" class="sidebar-logo"> 
+                    <h1 class="sidebar-title">Quick Access</h1>
+                </div>
+                <!-- Button to collapse the sidebar on desktop -->
+                <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="welcome.html" class="nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="nav-text">Home</span>
+                </a>
+                <a href="externalGrant.html" class="nav-item active" aria-current="page">
+    <i class="fa-solid fa-file-invoice-dollar"></i>
+    <span class="nav-text">External Grants</span>
+</a>
+<a href="internalGrant.html" class="nav-item">
+    <i class="fa-solid fa-building-columns"></i>
+    <span class="nav-text">Internal Grants</span>
+</a>
+                <a href="inventory.html" class="nav-item">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span class="nav-text">Inventory</span>
+                </a>
+                <a href="sopsAndTemplates.html" class="nav-item">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span class="nav-text">SOP and Template</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="profile-section">
+                    <img src="https://placehold.co/36x36/e2e8f0/475569?text=" alt="User Avatar" class="profile-avatar">
+                    <span class="username">User</span>
+                </div>
+                <button type="button" id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+
+    <!-- ===== Main Content ===== -->
+    <main class="main-content">
+    <header class="main-header">
+    <button type="button" class="hamburger-btn" id="sidebarToggleBtn" aria-label="Toggle sidebar">
+        <i class="fa-solid fa-bars"></i>
+    </button>
+    <h2>External Grants Management</h2>
+</header>
+
+    <!-- ===== MAIN DATA VIEW (This is the new wrapper) ===== -->
+    <div id="mainDataView">
+<section class="stat-cards-container">
+    <div class="stat-card">
+        <div class="card-icon bg-sky-100 text-sky-600"><i class="fa-solid fa-flask-vial"></i></div>
+        <div class="card-content">
+            <p class="card-title">Active Grants</p>
+            <p class="card-value" id="stat-active-grants">0</p> <!-- Added ID for JS -->
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="card-icon bg-emerald-100 text-emerald-600"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+        <div class="card-content">
+            <p class="card-title">Total Funding (INR)</p>
+            <p class="card-value" id="stat-total-funding">₹0</p> <!-- Added ID for JS -->
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="card-icon bg-amber-100 text-amber-600"><i class="fa-solid fa-users"></i></div>
+        <div class="card-content">
+            <p class="card-title">Total PIs</p>
+            <p class="card-value" id="stat-total-pis">0</p> <!-- Added ID for JS -->
+        </div>
+    </div>
+     <div class="stat-card">
+        <div class="card-icon bg-rose-100 text-rose-600"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="card-content">
+            <p class="card-title">Grants Completed</p>
+            <p class="card-value" id="stat-grants-completed">0</p> <!-- Added ID for JS -->
+        </div>
+    </div>
+</section>
+<!-- PASTE THIS NEW STRUCTURE IN ITS PLACE -->
+<div class="table-controls">
+    <div class="main-actions">
+        <button type="button" id="addGrantBtn" class="btn btn-primary">
+            <i class="fa-solid fa-plus mr-2"></i> Add New Grant
+        </button>
+        <button type="button" class="btn btn-secondary export-all-btn">
+            <i class="fa-solid fa-file-export mr-2"></i> Download Records
+        </button>
+    </div>
+    <div class="filters-and-search">
+         
+         <button type="button" id="openFilterModalBtn" class="btn btn-secondary">
+            <i class="fa-solid fa-filter mr-2"></i> Add Filters
+         </button>
+        <div class="search-bar">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="globalSearch" placeholder="Search by Title, PI, ID...">
+        </div>
+    </div>
+</div>      <div class="table-container" style="padding: 0 10px; overflow-x: auto;">
+            <table class="data-table" id="dataTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">S. No</th>
+                        <th style="width: 12%;">Grant ID</th>
+                        <th style="width: 25%;">Project Title</th>
+                        <th style="width: 20%;">Principal Investigator</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 10%;">Actions</th>
+            
+                    </tr>
+                </thead>
+                <tbody id="data-table-body">
+                    <tr><td colspan="6" style="text-align: center; padding: 20px;">Loading data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <nav class="pagination-container" aria-label="Table navigation">
+            <span class="pagination-info" id="paginationInfo"></span>
+            <ul class="pagination-list" id="paginationList">
+                <!-- Pagination links will be inserted here by JS -->
+            </ul>
+        </nav>
+     
+    </div> <!-- ===== END OF mainDataView ===== -->
+
+
+        <!-- ACCORDION FORM CONTAINER -->
+        <div class="max-w-4xl mx-auto">
+            <div id="grantFormContainer" class="form-container my-6" style="display: none;"">
+                <form id="grantForm" class="bg-white p-6 md:p-8 rounded-lg shadow-lg space-y-6">
+                    <h1 id="formTitle" class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">External Grant Research Data</h1>
+                    <input type="hidden" id="projectId" name="projectId">
+    
+                    <!-- Accordion Section Wrapper -->
+                    <div class="space-y-3">
+    
+                       <!-- Section 1: Core Project Info -->
+
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="true" aria-controls="coreProjectInfoAccordionContent_S1"> <!-- Unique aria-controls -->
+        <span>1. Core Project Info</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div id="coreProjectInfoAccordionContent_S1" class="accordion-content p-4 space-y-4 border-t border-gray-200" style="display: block;"> <!-- Unique ID, Open by default -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+            
+            <div>
+                <label for="application_id" class="block text-sm font-medium text-gray-700 mb-1 ">Application ID</label>
+                <input type="text" id="application_id" name="application_id" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500" required>
+            </div>
+            <div>
+                <label for="project_title" class="block text-sm font-medium text-gray-700 mb-1 required">Project Title</label>
+                <input type="text" id="project_title" name="project_title" required aria-required="true" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="project_id_odr" class="block text-sm font-medium text-gray-700 mb-1">Project ID (ODR)</label> 
+                <input type="text" id="project_id_odr" name="project_id_odr" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="project_id_funder" class="block text-sm font-medium text-gray-700 mb-1">Project ID (Funder)</label>
+                <input type="text" id="project_id_funder" name="project_id_funder" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="department_name" class="block text-sm font-medium text-gray-700 mb-1">JGU School/Dept</label>
+                <select id="department_name" name="department_name" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select School</option>
+                    <option value="Jindal Global Law School">Jindal Global Law School</option>
+                    <option value="Jindal Global Business School">Jindal Global Business School</option>
+                    <option value="Jindal School of Art and Architecture">Jindal School of Art and Architecture</option>
+                    <option value="Jindal School of International Affairs">Jindal School of International Affairs</option>
+                    <option value="Jindal School of Government and Public Policy">Jindal School of Government and Public Policy</option>
+                    <option value="Jindal School of Liberal Arts and Humanities">Jindal School of Liberal Arts and Humanities</option>
+                    <option value="Jindal School of Journalism and Communication">Jindal School of Journalism and Communication</option>
+                    <option value="Jindal School of Banking and Finance">Jindal School of Banking and Finance</option>
+                    <option value="Jindal School of Environment and Sustainability">Jindal School of Environment and Sustainability</option>
+                    <option value="Jindal School of Psychology and Counselling">Jindal School of Psychology and Counselling</option>
+                    <option value="Jindal School of Languages and Literature">Jindal School of Languages and Literature</option>
+                    <option value="Jindal School of Public Health and Human Development">Jindal School of Public Health and Human Development</option>
+                    <option value="Jindal India Institute(JII)">Jindal India Institute(JII)</option>
+                    <option value="Jindal Institute of Behavioural Sciences">Jindal Institute of Behavioural Sciences</option>
+                    <option value="International Institute for Higher Education Research & Capacity Building">International Institute for Higher Education Research & Capacity Building</option>
+                    <option value="The Motwani Jadeja Institute for American Studies (MJIAS)">The Motwani Jadeja Institute for American Studies (MJIAS)</option>
+                    <option value="Jindal Institute of Haryana Studies">Jindal Institute of Haryana Studies</option>
+                    <option value="The Jindal Institute of Leadership Development and Executive Education (JILDEE)">The Jindal Institute of Leadership Development and Executive Education (JILDEE) </option>
+
+                    <option value="Other">Other (Specify if needed)</option>
+                </select>
+            </div>
+            <div>
+                <label for="type_of_grant" class="block text-sm font-medium text-gray-700 mb-1">Type of Grant</label>
+                <select id="type_of_grant" name="type_of_grant" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select a grant type</option> <!-- Changed from disabled selected to allow unselecting -->
+                    <option value="Research Projects">Research Projects</option>
+                    <option value="Curricula Co-development">Curricula Co-development</option>
+                    <option value="Faculty Development Programmes">Faculty Development Programmes</option>
+                    <option value="Research Centres & Initiatives">Research Centres & Initiatives</option>
+                    <option value="Chair Professorships">Chair Professorships</option>
+                    <option value="Chair Professorships">Consultancy Projects</option>
+                    <option value="Massive Open Online Courses (MOOC)">Massive Open Online Courses (MOOC)</option>
+                    <option value="Others">Others</option>
+                </select>
+            </div>
+            <div>
+                <label for="funder_type" class="block text-sm font-medium text-gray-700 mb-1">Funder Type</label>
+                <select id="funder_type" name="funder_type" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select Funder Type</option>
+                    <option value="Domestic">Domestic</option>
+                    <option value="International">International</option>
+                </select>
+            </div>
+            <div>
+                <label for="fcra_type" class="block text-sm font-medium text-gray-700 mb-1">FCRA Status</label>
+                <select id="fcra_type" name="fcra_type" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    <option value="">Select FCRA Status</option>
+                    <option value="FCRA Applicable">FCRA Applicable</option>
+                    <option value="Non-FCRA">Non-FCRA</option>
+                </select>
+            </div>
+            <div>
+                <label for="project_website_link" class="block text-sm font-medium text-gray-700 mb-1">Project Website Link</label>
+                <input type="url" id="project_website_link" name="project_website_link" placeholder="https://..." class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+
+            <div class="md:col-span-2">
+                <label for="s1_project_agreement_file" class="block text-sm font-medium text-gray-700 mb-1">Upload Project Agreement</label> <!-- Removed empty span for required -->
+                <input 
+                    type="file" 
+                    id="s1_project_agreement_file" 
+                    name="s1_project_agreement_file" 
+                    accept=".pdf,.doc,.docx,.jpg,.png" 
+                    multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+               <div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+    <div id="s1_project_agreement_file_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+    
+                        <!-- Section 2: Dates & Status -->
+                        <div class="border rounded-md overflow-hidden">
+                            <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="datesStatus">
+                              <span>2. Dates & Status</span>
+                              <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                              </svg>
+                            </button>
+                          
+                            <div id="datesStatus" class="accordion-content p-4 space-y-4 border-t border-gray-200">
+                              <fieldset>
+                                <legend class="sr-only">Dates and Status Information</legend>
+                          
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+                          
+                                  <!-- Application Date -->
+                                  <div>
+                                    <label for="application_date" class="block text-sm font-medium text-gray-700 mb-1">Application Date</label>
+                                    <input type="date" id="application_date" name="application_date" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                  </div>
+                          
+                                  <!-- Application Status -->
+                                  <div>
+                                    <label for="application_status" class="block text-sm font-medium text-gray-700 mb-1">Application Status</label>
+                                    <select id="application_status" name="application_status" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Status</option>
+                                      <option value="Submitted">Submitted</option>
+                                      <option value="Under Review">Under Review</option>
+                                      <option value="Successful">Successful</option>
+                                      <option value="Unsuccessful">Unsuccessful</option>
+                                      <option value="Withdrawn">Withdrawn</option>
+                                    </select>
+                                  </div>
+                          
+                                  <!-- Project Status -->
+                                  <div>
+                                    <label for="project_status" class="block text-sm font-medium text-gray-700 mb-1">Project Status</label>
+                                    <select id="project_status" name="project_status" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Status</option>
+                                      <option value="Not yet Started">Not yet Started</option>
+                                      <option value="In Progress">In Progress</option>
+                                      <option value="Completed">Completed</option>
+                                      <option value="On Hold">On Hold</option>
+                                      <option value="Terminated">Terminated</option>
+                                    </select>
+                                  </div>
+                          
+                                  <!-- Project Secured Date -->
+                                  <div>
+                                    <label for="project_secured_date" class="block text-sm font-medium text-gray-700 mb-1">Project Secured Date</label>
+                                    <input type="date" id="project_secured_date" name="project_secured_date" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                  </div>
+                          
+                                  <!-- Project Start Date -->
+                                  <div>
+                                    <label for="project_start_date" class="block text-sm font-medium text-gray-700 mb-1">Project Start Date</label>
+                                    <input type="date" id="project_start_date" name="project_start_date" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                  </div>
+                          
+                                  <!-- Project End Date -->
+                                  <div>
+                                    <label for="project_end_date" class="block text-sm font-medium text-gray-700 mb-1">Project End Date</label>
+                                    <input type="date" id="project_end_date" name="project_end_date" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                  </div>
+                          
+                                  <!-- Calendar Year -->
+                                  <div>
+                                    <label for="calendar_year" class="block text-sm font-medium text-gray-700 mb-1">Calendar Year (Secured)</label>
+                                    <select id="calendar_year" name="calendar_year" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Year</option>
+                                      <!-- Years will be added dynamically -->
+                                    </select>
+                                  </div>
+                          
+                                  <!-- Financial Year -->
+                                  <div class="md:col-span-1">
+                                    <label for="financial_year" class="block text-sm font-medium text-gray-700 mb-1">Financial Year (Secured)</label>
+                                    <select id="financial_year" name="financial_year" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Financial Year</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Format: YYYY-YY (e.g., 2024-25)</p>
+                                  </div>
+                          
+                                  <!-- Academic Year -->
+                                  <div class="md:col-span-1 mt-4">
+                                    <label for="academic_year" class="block text-sm font-medium text-gray-700 mb-1">Academic Year (Secured)</label>
+                                    <select id="academic_year" name="academic_year" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Academic Year</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-1">Format: YYYY-YY (e.g., 2024-25)</p>
+                                  </div>
+                          
+                                  <!-- Project Duration -->
+                                  <div class="md:col-span-2">
+                                    <label for="project_duration" class="block text-sm font-medium text-gray-700 mb-1">Project Duration</label>
+                                    <input type="text" id="project_duration" name="project_duration" placeholder="e.g., 24 months" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                  </div>
+                          
+                                  <!-- Financial Closing Status -->
+                                  <div>
+                                    <label for="financial_closing_status" class="block text-sm font-medium text-gray-700 mb-1">Financial Closing Status (UC)</label>
+                                    <select id="financial_closing_status" name="financial_closing_status" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                      <option value="">Select Status</option>
+                                      <option value="Submitted">UC Submitted</option>
+                                      <option value="Pending Submission">UC Pending Submission</option>
+                                      <option value="Approved">UC Approved</option>
+                                      <option value="Closed">Financially Closed</option>
+                                    </select>
+                                  </div>
+    
+                                  <!-- New Upload Field -->
+                                  <div class="md:col-span-2">
+                                    <label for="s2_application_document_file" class="block text-sm font-medium text-gray-700 mb-1">Upload Application Document <span class="text-red-500"></span></label>
+                                    <input 
+                                        type="file" 
+                                        id="s2_application_document_file" 
+                                        name="s2_application_document_file" 
+                                        accept=".pdf,.doc,.docx,.jpg,.png" 
+                                        multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500"
+                                    >
+                                    <div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+    <div id="s2_application_document_file_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+                                </div>
+                          
+                                </div>
+                              </fieldset>
+                            </div>
+                          </div>
+                          
+                          <script>
+                            // Function to generate options like "YYYY-YY"
+                            function generateYearOptions(selectElement, startYear, endYear) {
+                              for (let year = startYear; year <= endYear; year++) {
+                                let option = document.createElement('option');
+                                const formattedYear = `${year}-${String(year + 1).slice(-2)}`;
+                                option.value = formattedYear;
+                                option.textContent = formattedYear;
+                                selectElement.appendChild(option);
+                              }
+                            }
+                          
+                            // Populate dropdowns
+                            
+                            generateYearOptions(document.getElementById('financial_year'), 1980, 2099);
+                            generateYearOptions(document.getElementById('academic_year'), 1980, 2099);
+    
+                            document.addEventListener('DOMContentLoaded', function () {
+                            const select = document.getElementById('calendar_year');
+                            const currentYear = new Date().getFullYear();
+    
+                            for (let year = 2000; year <= currentYear + 5; year++) {
+                            const option = document.createElement('option');
+                            option.value = year;
+                            option.textContent = year;
+                            select.appendChild(option);
+                            }
+                        });
+                          </script>
+                          
+    
+                    <!-- Section 3: Funding & Collaboration -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="fundingCollabAccordionContent_S3"> <!-- Unique aria-controls -->
+        <span>3. Funding & Collaboration</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+
+    <div id="fundingCollabAccordionContent_S3" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Funding & Collaboration Details</legend>
+
+            <div id="fundingCollabContainer_S3" class="space-y-4"> <!-- Unique ID for container -->
+                <!-- Funding/Collaboration entries will be dynamically added here -->
+            </div>
+
+            <!-- Styled Add Button -->
+            <div class="flex space-x-2 mt-4">
+                <button type="button" id="addFundingCollabButton_S3" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Collaboration
+                </button>
+                <!-- The global remove button is removed, individual items will have their own remove -->
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 3 script
+    let fundingCollabEntryIdCounter_S3 = 0; // Unique counter for this section
+    const fundingCollabContainer_S3 = document.getElementById('fundingCollabContainer_S3');
+    const addFundingCollabButton_S3 = document.getElementById('addFundingCollabButton_S3');
+
+    function _createAndAppendFundingCollabEntry_S3(collabData = {}) {
+        if (!fundingCollabContainer_S3) {
+            console.error("Funding Collaboration container (fundingCollabContainer_S3) not found!");
+            return;
+        }
+        fundingCollabEntryIdCounter_S3++;
+
+        const newEntryDiv = document.createElement('div');
+        // Added 'group' for hover effect on remove button
+        newEntryDiv.className = 'funding-collab-entry group grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative';
+        newEntryDiv.id = `funding_collab_entry_s3_${fundingCollabEntryIdCounter_S3}`;
+
+        newEntryDiv.innerHTML = `
+            <div>
+                <label for="funding_agencies_name_s3_${fundingCollabEntryIdCounter_S3}" class="block text-sm font-medium text-gray-700 mb-1">Funding Agency Name</label>
+                <input type="text" id="funding_agencies_name_s3_${fundingCollabEntryIdCounter_S3}" name="funding_agencies_name[]" value="${collabData.funding_agencies_name || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="collaboration_name_s3_${fundingCollabEntryIdCounter_S3}" class="block text-sm font-medium text-gray-700 mb-1">Collaborating Institution(s)</label>
+                <textarea id="collaboration_name_s3_${fundingCollabEntryIdCounter_S3}" name="collaboration_name[]" rows="2" placeholder="Name of the Institution" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">${collabData.collaboration_name || ''}</textarea>
+            </div>
+            <div>
+                <label for="collaboration_country_s3_${fundingCollabEntryIdCounter_S3}" class="block text-sm font-medium text-gray-700 mb-1">Collaborating Institution Country</label>
+                <input type="text" id="collaboration_country_s3_${fundingCollabEntryIdCounter_S3}" name="collaboration_country_of_origin[]" value="${collabData.collaboration_country_of_origin || ''}" placeholder="e.g., USA, Germany, India" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <div>
+                <label for="collaboration_contact_s3_${fundingCollabEntryIdCounter_S3}" class="block text-sm font-medium text-gray-700 mb-1">Collaborator Contact</label>
+                <input type="text" id="collaboration_contact_s3_${fundingCollabEntryIdCounter_S3}" name="collaboration_contact_details[]" value="${collabData.collaboration_contact_details || ''}" placeholder="Email or Phone number" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            </div>
+            <button type="button"
+                class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove this Collaboration">
+                <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+            </button>
+        `;
+
+        const removeButton = newEntryDiv.querySelector('.remove-single-item-btn');
+        if (removeButton) {
+            removeButton.addEventListener('click', function() {
+                newEntryDiv.remove();
+                // If you need to enforce at least one entry, add logic here or in populate function.
+            });
+        }
+        fundingCollabContainer_S3.appendChild(newEntryDiv);
+    }
+
+    if (addFundingCollabButton_S3) {
+        addFundingCollabButton_S3.addEventListener('click', function() {
+            _createAndAppendFundingCollabEntry_S3(); // Add a new, blank entry
+        });
+    }
+
+    // NEW POPULATION FUNCTION for Section 3, exposed to global scope
+    window.populateFundingCollaborationsGui_S3 = function(collabDataArray = []) {
+        if (!fundingCollabContainer_S3) return;
+
+        fundingCollabContainer_S3.innerHTML = ''; // Clear existing entries
+        fundingCollabEntryIdCounter_S3 = 0; // Reset counter
+
+        if (collabDataArray.length === 0) {
+            _createAndAppendFundingCollabEntry_S3(); // Add one blank entry if no data
+        } else {
+            collabDataArray.forEach(collabData => {
+                _createAndAppendFundingCollabEntry_S3(collabData); // Populate with data
+            });
+        }
+    };
+
+    
+})(); // End of IIFE for Section 3
+</script>    
+    
+          <!-- Section - 4 Principal Investigator                 -->
+
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="piDetailsAccordionContent_S4"> <!-- Unique aria-controls -->
+        <span>4. Principal Investigator (PI)</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div id="piDetailsAccordionContent_S4" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Principal Investigator (PI) Details</legend>
+            
+            <div id="piContainer_S4" class="space-y-4"> <!-- Unique ID for container -->
+                <!-- PI Entries will be dynamically added here by JavaScript -->
+            </div>
+
+            <div class="flex space-x-2 mt-4">
+                <button type="button" id="addPiButton_S4" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add PI
+                </button>
+                <!-- Global "Remove PI" button is removed, relying on per-item remove -->
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+             
+<script>
+(function() { // IIFE for Section 4
+    let piEntryIdCounter_S4 = 0; 
+    const piContainer_S4 = document.getElementById('piContainer_S4');
+    const addPiButton_S4 = document.getElementById('addPiButton_S4');
+
+    function createAndAppendPiEntry_S4(piData = {}) {
+        if (!piContainer_S4) {
+            return;
+        }
+        piEntryIdCounter_S4++;
+
+        const newEntryDiv = document.createElement('div');
+        newEntryDiv.className = 'pi-entry group grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative';
+
+        // STEP 1: Define the complete HTML structure
+        newEntryDiv.innerHTML = `
+    <input type="hidden" name="pi_id[]" value="${piData.id || ''}">
+
+    <div>
+        <label for="name_of_pi_s4_${piEntryIdCounter_S4}" class="block text-sm font-medium text-gray-700 mb-1">Name of PI</label>
+        <input type="text" id="name_of_pi_s4_${piEntryIdCounter_S4}" name="name_of_pi[]" value="${piData.name_of_pi || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+    <div>
+        <label for="pi_contact_details_s4_${piEntryIdCounter_S4}" class="block text-sm font-medium text-gray-700 mb-1">Email Id</label>
+        <input type="email" id="pi_contact_details_s4_${piEntryIdCounter_S4}" name="pi_contact_details[]" value="${piData.pi_contact_details || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+    <div>
+        <label for="pi_affiliating_institution_s4_${piEntryIdCounter_S4}" class="block text-sm font-medium text-gray-700 mb-1">Affiliating Institution</label>
+        <input type="text" id="pi_affiliating_institution_s4_${piEntryIdCounter_S4}" name="pi_affiliating_institution[]" value="${piData.pi_affiliating_institution || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+    </div>
+    <div>
+        <label for="pi_affiliating_country_s4_${piEntryIdCounter_S4}" class="block text-sm font-medium text-gray-700 mb-1">Affiliating Country</label>
+        <select id="pi_affiliating_country_s4_${piEntryIdCounter_S4}" name="pi_affiliating_country[]" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+            <option value="">Select Country</option>
+        </select>
+    </div>
+    <div class="md:col-span-2">
+        <label for="s4_pi_photograph_${piEntryIdCounter_S4}" class="block text-sm font-medium text-gray-700 mb-1">Upload Photograph</label>
+        <input type="file" id="s4_pi_photograph_${piEntryIdCounter_S4}" name="s4_pi_photographs[]" multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="mt-2">
+            <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+            <div id="s4_pi_photograph_display_container_${piEntryIdCounter_S4}" class="mt-1 space-y-1"></div>
+        </div>
+    </div>
+    <button type="button" class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove this PI">
+         <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+    </button>
+`;
+        
+        // STEP 2: Append the new element to the DOM
+        piContainer_S4.appendChild(newEntryDiv);
+
+        // STEP 3: Now that the element is on the page, call the global helpers to populate it.
+        
+        // Populate the country dropdown
+        if (typeof populateCountryDropdown === 'function') {
+            populateCountryDropdown(`pi_affiliating_country_s4_${piEntryIdCounter_S4}`);
+            const countrySelect = newEntryDiv.querySelector(`#pi_affiliating_country_s4_${piEntryIdCounter_S4}`);
+            if (countrySelect) {
+                countrySelect.value = piData.pi_affiliating_country || '';
+            }
+        } else {
+            console.error("populateCountryDropdown function is not available.");
+        }
+
+        // Populate the file display
+        let filesToDisplay = [];
+        const fileData = piData.pi_photograph_s3_key;
+        if (Array.isArray(fileData)) { filesToDisplay = fileData; }
+        else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) { try { filesToDisplay = JSON.parse(fileData); } catch (e) {} }
+        else if (typeof fileData === 'string' && fileData.trim() !== '') { filesToDisplay = [fileData]; }
+
+        const displayContainer = newEntryDiv.querySelector(`#s4_pi_photograph_display_container_${piEntryIdCounter_S4}`);
+        if (displayContainer) {
+            if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+                filesToDisplay.forEach(key => {
+                    if (!key) return;
+                    const fileName = key.split('/').pop();
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'existing-file-item';
+                    fileElement.innerHTML = `
+                        <span title="${fileName}">${fileName}</span>
+                        <button type="button" class="btn-remove-file">&times;</button>
+                        <input type="hidden" data-role="existing-pi-file" value="${key}">
+                    `;
+                    fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                    displayContainer.appendChild(fileElement);
+                });
+            } else {
+                displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+            }
+        }
+        
+        // Add event listener for the remove button
+        const removeButton = newEntryDiv.querySelector('.remove-single-item-btn');
+        if (removeButton) {
+            removeButton.addEventListener('click', () => newEntryDiv.remove());
+        }
+    }
+
+    if (addPiButton_S4) {
+        addPiButton_S4.addEventListener('click', () => createAndAppendPiEntry_S4());
+    }
+    
+    window.populatePIGui_S4 = function(piDataArray = []) {
+        if (!piContainer_S4) return;
+        piContainer_S4.innerHTML = ''; 
+        piEntryIdCounter_S4 = 0;   
+        if (piDataArray.length === 0) {
+            createAndAppendPiEntry_S4(); 
+        } else {
+            piDataArray.forEach(piData => createAndAppendPiEntry_S4(piData));
+        }
+    };
+    
+})(); // End of IIFE
+</script>
+
+<!-- Section 5: Co-Investigator(s) (Co-PI) -->
+
+
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="coPiDetailsAccordionContent_S5"> <!-- Unique aria-controls -->
+        <span>5. Co-Investigator(s) (Co-PI)</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div id="coPiDetailsAccordionContent_S5" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Co-Investigator(s) Details</legend>
+
+            <div id="coPiContainer_S5" class="space-y-4"> 
+                
+            </div>
+
+            <div class="flex space-x-2 mt-4">
+                <button type="button" id="addCoPiButton_S5" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Co-PI
+                </button>
+                <!-- Global "Remove Co-PI" button is removed -->
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+
+<script>
+(function() { // IIFE for Co-PI section
+    let coPiEntryIdCounter_S5 = 0; 
+    const coPiContainer_S5 = document.getElementById('coPiContainer_S5');
+    const addCoPiButton_S5 = document.getElementById('addCoPiButton_S5');
+
+    
+function _createAndAppendCoPiEntry_S5(coPiData = {}) {
+    if (!coPiContainer_S5) {
+        return;
+    }
+    coPiEntryIdCounter_S5++;
+
+    const newEntryDiv = document.createElement('div');
+    newEntryDiv.className = 'co-pi-entry group grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative';
+
+    // STEP 1: Define the complete HTML structure
+    newEntryDiv.innerHTML = `
+        <div>
+            <label for="name_of_co_pi_s5_${coPiEntryIdCounter_S5}" class="block text-sm font-medium text-gray-700 mb-1">Co-PI Name</label>
+            <input type="text" id="name_of_co_pi_s5_${coPiEntryIdCounter_S5}" name="name_of_co_pi[]" value="${coPiData.name_of_co_pi || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+            <label for="co_pi_contact_details_s5_${coPiEntryIdCounter_S5}" class="block text-sm font-medium text-gray-700 mb-1">Contact (Email/Phone)</label>
+            <input type="text" id="co_pi_contact_details_s5_${coPiEntryIdCounter_S5}" name="co_pi_contact_details[]" value="${coPiData.co_pi_contact_details || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+            <label for="co_pi_affiliating_institution_s5_${coPiEntryIdCounter_S5}" class="block text-sm font-medium text-gray-700 mb-1">Affiliating Institution</label>
+            <input type="text" id="co_pi_affiliating_institution_s5_${coPiEntryIdCounter_S5}" name="co_pi_affiliating_institution[]" value="${coPiData.co_pi_affiliating_institution || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+            <label for="co_pi_affiliating_country_s5_${coPiEntryIdCounter_S5}" class="block text-sm font-medium text-gray-700 mb-1">Affiliating Country</label>
+            <select id="co_pi_affiliating_country_s5_${coPiEntryIdCounter_S5}" name="co_pi_affiliating_country[]" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Select Country</option>
+            </select>
+        </div>
+        <div class="md:col-span-2">
+            <label for="s5_co_pi_photograph_${coPiEntryIdCounter_S5}" class="block text-sm font-medium text-gray-700 mb-1">Upload Photograph</label>
+            <input type="file" id="s5_co_pi_photograph_${coPiEntryIdCounter_S5}" name="s5_co_pi_photographs[]" accept=".jpg,.jpeg,.png" multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+            <div class="mt-2">
+                <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+                <div id="s5_co_pi_photograph_display_container_${coPiEntryIdCounter_S5}" class="mt-1 space-y-1"></div>
+            </div>
+        </div>
+        <button type="button" class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity" title="Remove this Co-PI">
+            <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+        </button>
+    `;
+
+    // STEP 2: Append the new element to the DOM
+    coPiContainer_S5.appendChild(newEntryDiv);
+
+    // STEP 3: Populate dropdowns and file lists now that the element is on the page.
+
+    // Populate the country dropdown
+    if (typeof populateCountryDropdown === 'function') {
+        populateCountryDropdown(`co_pi_affiliating_country_s5_${coPiEntryIdCounter_S5}`);
+        const countrySelect = newEntryDiv.querySelector(`#co_pi_affiliating_country_s5_${coPiEntryIdCounter_S5}`);
+        if (countrySelect) {
+            countrySelect.value = coPiData.co_pi_affiliating_country || '';
+        }
+    }
+
+    // *** START: THIS IS THE CORRECTED FILE DISPLAY LOGIC ***
+    let filesToDisplay = [];
+    const fileData = coPiData.co_pi_photograph_s3_key;
+
+    // Robustly parse the file data (could be an array or a JSON string)
+    if (Array.isArray(fileData)) { 
+        filesToDisplay = fileData; 
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) { 
+        try { filesToDisplay = JSON.parse(fileData); } catch (e) {} 
+    } else if (typeof fileData === 'string' && fileData.trim() !== '') { 
+        filesToDisplay = [fileData]; 
+    }
+
+    const displayContainer = newEntryDiv.querySelector(`#s5_co_pi_photograph_display_container_${coPiEntryIdCounter_S5}`);
+    if (displayContainer) {
+        if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+            // If there are files, iterate and create the display elements
+            filesToDisplay.forEach(key => {
+                if (!key) return;
+                const fileName = key.split('/').pop();
+                const fileElement = document.createElement('div');
+                fileElement.className = 'existing-file-item';
+                fileElement.innerHTML = `
+                    <span title="${fileName}">${fileName}</span>
+                    <button type="button" class="btn-remove-file">&times;</button>
+                    <input type="hidden" data-role="existing-co-pi-file" value="${key}">
+                `;
+                fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                displayContainer.appendChild(fileElement);
+            });
+        } else {
+            // If no files, display "None"
+            displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+        }
+    }
+    // *** END: CORRECTED FILE DISPLAY LOGIC ***
+    
+    // Add event listener for the remove button
+    const removeButton = newEntryDiv.querySelector('.remove-single-item-btn');
+    if (removeButton) {
+        removeButton.addEventListener('click', () => newEntryDiv.remove());
+    }
+}
+
+    if (addCoPiButton_S5) {
+        addCoPiButton_S5.addEventListener('click', () => _createAndAppendCoPiEntry_S5()); 
+    }
+    
+    window.populateCoPiGui_S5 = function(coPiDataArray = []) {
+        if (!coPiContainer_S5) return;
+        coPiContainer_S5.innerHTML = ''; 
+        coPiEntryIdCounter_S5 = 0;   
+        if (coPiDataArray.length === 0) {
+            _createAndAppendCoPiEntry_S5(); 
+        } else {
+            coPiDataArray.forEach(coPiData => _createAndAppendCoPiEntry_S5(coPiData));
+        }
+    };
+})();
+</script> 
+
+
+
+         <!-- Section 6: Grant Amounts & Overheads -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="grantAmountsAccordionContent_S6">
+        <span>6. Grant Amounts & Overheads</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+    </button>
+    <div id="grantAmountsAccordionContent_S6" class="accordion-content p-4 space-y-4 border-t border-gray-200">
+       <fieldset>
+           <legend class="text-lg font-medium text-gray-900 mb-4">Financial Details</legend>
+           <div class="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
+               <div>
+                   <label for="grant_sanctioned_amount_original_currency" class="block text-sm font-medium text-gray-700 mb-1">Sanctioned Amount (Original Currency)</label>
+                   <input type="number" step="0.01" id="grant_sanctioned_amount_original_currency" name="grant_sanctioned_amount_original_currency" inputmode="decimal" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+               <div>
+                   <label for="currency_code" class="block text-sm font-medium text-gray-700 mb-1">Currency Code</label>
+                   <input type="text" id="currency_code" name="currency_code" placeholder="e.g., INR, USD, EUR" maxlength="3" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+                <div>
+                   <label for="exchange_rate_to_inr" class="block text-sm font-medium text-gray-700 mb-1">Exchange Rate (to INR)</label>
+                   <input type="number" step="0.0001" id="exchange_rate_to_inr" name="exchange_rate_to_inr" inputmode="decimal" placeholder="If currency is not INR" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+                <div>
+                   <label for="grant_amount_in_inr" class="block text-sm font-medium text-gray-700 mb-1">Sanctioned Amount (INR)</label>
+                   <!-- Made editable for now; calculation can be server-side or added back later -->
+                   <input type="number" step="0.01" id="grant_amount_in_inr" name="grant_amount_in_inr" inputmode="decimal" placeholder="Enter if known, or auto-calculated" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+                <div>
+                   <label for="amount_in_usd_equivalent" class="block text-sm font-medium text-gray-700 mb-1">Sanctioned Amount (USD Equiv.)</label>
+                   <!-- Made editable for now -->
+                   <input type="number" step="0.01" id="amount_in_usd_equivalent" name="amount_in_usd_equivalent" inputmode="decimal" placeholder="Enter if known, or auto-calculated" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+               <div>
+                   <label for="overheads_percentage" class="block text-sm font-medium text-gray-700 mb-1">Overheads Percentage (%)</label>
+                   <input type="number" step="0.1" id="overheads_percentage" name="overheads_percentage" inputmode="decimal" placeholder="e.g., 10" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+               <div>
+                   <label for="overheads_secured_inr" class="block text-sm font-medium text-gray-700 mb-1">Overheads Secured (INR)</label>
+                   <!-- Made editable for now -->
+                   <input type="number" step="0.01" id="overheads_secured_inr" name="overheads_secured_inr" inputmode="decimal" placeholder="Enter if known, or auto-calculated" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+               <div>
+                   <label for="overheads_received_inr" class="block text-sm font-medium text-gray-700 mb-1">Overheads Received (INR)</label>
+                   <input type="number" step="0.01" id="overheads_received_inr" name="overheads_received_inr" inputmode="decimal" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+               </div>
+               <div>
+                   <label for="gst_applicable" class="block text-sm font-medium text-gray-700 mb-1">GST Applicable</label>
+                    <select id="gst_applicable" name="gst_applicable" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                       <option value="">Select Option</option>
+                       <option value="true">Yes</option>
+                       <option value="false">No</option>
+                       <option value="exempt">Exempted</option>
+                    </select>
+               </div>
+               <div class="md:col-span-2">
+                   <label for="s6_financial_documents_file" class="block text-sm font-medium text-gray-700 mb-1">Upload Bank Documents</label>
+                   <input 
+                       type="file" 
+                       id="s6_financial_documents_file"
+                       name="s6_financial_documents_file"
+                       accept=".pdf,.doc,.docx,.jpg,.png" 
+                       multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500"
+                   >
+                  <div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+    <div id="s6_financial_documents_file_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+               </div>
+           </div>
+       </fieldset>
+    </div>
+</div>
+
+<!-- You can place this right after the HTML for Section 6 -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Get references to all the input fields involved
+    const sanctionedOriginalInput = document.getElementById('grant_sanctioned_amount_original_currency');
+    const exchangeRateInput = document.getElementById('exchange_rate_to_inr');
+    const sanctionedInrInput = document.getElementById('grant_amount_in_inr');
+    const overheadsPercentageInput = document.getElementById('overheads_percentage');
+    const overheadsSecuredInput = document.getElementById('overheads_secured_inr');
+
+    // The main calculation function
+    function calculateSection6Financials() {
+        const originalAmount = parseFloat(sanctionedOriginalInput.value) || 0;
+        const exchangeRate = parseFloat(exchangeRateInput.value) || 0;
+        const overheadsPercent = parseFloat(overheadsPercentageInput.value) || 0;
+
+        // 1. Calculate Sanctioned Amount (INR)
+        let sanctionedInr = 0;
+        if (originalAmount > 0 && exchangeRate > 0) {
+            sanctionedInr = originalAmount * exchangeRate;
+            sanctionedInrInput.value = sanctionedInr.toFixed(2);
+        } else {
+            // If inputs are incomplete, clear the result
+            sanctionedInrInput.value = '';
+        }
+
+        // 2. Calculate Overheads Secured (INR)
+        if (sanctionedInr > 0 && overheadsPercent > 0) {
+            const overheadsSecured = sanctionedInr * (overheadsPercent / 100);
+            overheadsSecuredInput.value = overheadsSecured.toFixed(2);
+        } else {
+            overheadsSecuredInput.value = '';
+        }
+    }
+
+    // Attach event listeners to the input fields that trigger the calculation
+    if(sanctionedOriginalInput) sanctionedOriginalInput.addEventListener('input', calculateSection6Financials);
+    if(exchangeRateInput) exchangeRateInput.addEventListener('input', calculateSection6Financials);
+    if(sanctionedInrInput) sanctionedInrInput.addEventListener('input', calculateSection6Financials); // Recalculate overheads if INR is manually changed
+    if(overheadsPercentageInput) overheadsPercentageInput.addEventListener('input', calculateSection6Financials);
+
+    // Make this function globally available so we can call it when populating the form
+    window.triggerSection6Calculations = calculateSection6Financials;
+});
+</script>
+
+                        
+      <!-- Section 7: Funds Received & Installments -->
+
+<div class="border rounded-md overflow-hidden">
+    <button type="button"
+        class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none"
+        aria-expanded="false" aria-controls="fundsReceivedAccordionContent_S7">
+        <span>7. Funds Received & Installments</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+
+    <div id="fundsReceivedAccordionContent_S7" class="accordion-content p-4 space-y-4 border-t border-gray-200">
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Funds Received Details</legend>
+
+            <!-- Totals Display -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-6">
+                <div>
+                    <label for="total_amount_received_inr_s7" class="block text-sm font-medium text-gray-700 mb-1">Total Amount Received (INR)</label>
+                    <input type="number" step="0.01" id="total_amount_received_inr_s7" name="total_amount_received_inr" 
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm bg-gray-100 text-gray-700">
+                </div>
+                <div>
+                    <label for="remaining_amount_in_inr_s7" class="block text-sm font-medium text-gray-700 mb-1">Remaining Amount (INR)</label>
+                    <input type="number" step="0.01" id="remaining_amount_in_inr_s7" name="remaining_amount_in_inr" 
+                        class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm bg-gray-100 text-gray-700">
+                    <p class="text-xs text-gray-500 mt-1">(Calculated based on Sanctioned Amount INR - Total Received)</p>
+                </div>
+            </div>
+
+            <div id="installmentsContainer_S7" class="space-y-4 mt-4">
+                <!-- Installment entries will be dynamically added here -->
+            </div>
+
+            <!-- Global Add/Remove Buttons for Installments -->
+            <div class="flex space-x-2 mt-4">
+                <button type="button" id="addInstallmentButton_S7"
+                    class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                    Add Installment
+                </button>
+                
+            </div>
+
+            <!-- Overall Document Upload (Optional) -->
+            <div class="mt-6 border-t pt-4">
+                <label for="s7_fund_received_document_overall" class="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Overall Fund Utilization/Receipt Document (Optional)
+                </label>
+                <input type="file" 
+                    id="s7_fund_received_document_overall" 
+                    name="s7_fund_received_document_overall"
+                    accept=".pdf,.doc,.docx,.jpg,.png"
+                    multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+               <p class="mt-1 text-xs text-gray-500">For documents not tied to a specific installment.</p>
+<div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+    <div id="s7_fund_received_document_overall_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 7 script
+    let installmentEntryIdCounter_S7 = 0; // Unique ID counter for this section
+    const installmentsContainer_S7 = document.getElementById('installmentsContainer_S7');
+    const addInstallmentButton_S7 = document.getElementById('addInstallmentButton_S7');
+    const removeInstallmentButton_S7 = document.getElementById('removeInstallmentButton_S7'); // Get the global remove button
+    const totalAmountReceivedInput_S7 = document.getElementById('total_amount_received_inr_s7');
+    const remainingAmountInput_S7 = document.getElementById('remaining_amount_in_inr_s7');
+
+    // Your existing calculation logic - KEPT AS IS
+    function calculateS7TotalAmount() {
+        if (!installmentsContainer_S7 || !totalAmountReceivedInput_S7 || !remainingAmountInput_S7) return;
+
+        let total = 0;
+        let fees = 0;
+
+        installmentsContainer_S7.querySelectorAll('input[name="installment_amount_inr[]"]').forEach(input => { // Changed selector to match new name
+            const val = parseFloat(input.value);
+            if (!isNaN(val)) total += val;
+        });
+
+        installmentsContainer_S7.querySelectorAll('input[name="bank_fee_inr[]"]').forEach(input => { // Changed selector to match new name
+            const fee = parseFloat(input.value);
+            if (!isNaN(fee)) fees += fee;
+        });
+        
+        const netReceived = total - fees;
+        totalAmountReceivedInput_S7.value = netReceived.toFixed(2);
+        
+        const grantAmountINREl_S6 = document.getElementById('grant_amount_in_inr'); // From Section 6
+        if (grantAmountINREl_S6) {
+            const sanctionedINRTtl = parseFloat(grantAmountINREl_S6.value) || 0;
+            remainingAmountInput_S7.value = (sanctionedINRTtl - netReceived).toFixed(2);
+        } else {
+            remainingAmountInput_S7.value = '';
+        }
+    }
+    window.updateSection7Calculations = calculateS7TotalAmount; // Expose for other sections if needed
+
+
+    function _createAndAppendInstallmentEntry_S7(instData = {}) {
+    if (!installmentsContainer_S7) return;
+    installmentEntryIdCounter_S7++;
+
+    const newEntryDiv = document.createElement('div');
+    newEntryDiv.className = 'installment-entry-s7 group grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative';
+
+    newEntryDiv.innerHTML = `
+        <div>
+            <label for="fy_year_installment_s7_${installmentEntryIdCounter_S7}" class="block text-sm font-medium text-gray-700 mb-1">FY Year</label>
+            <input type="text" id="fy_year_installment_s7_${installmentEntryIdCounter_S7}" name="fy_year_installment[]" value="${instData.fy_year_installment || instData.fy_year || ''}" placeholder="YYYY-YY" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div>
+            <label for="installment_amount_inr_s7_${installmentEntryIdCounter_S7}" class="block text-sm font-medium text-gray-700 mb-1">Installment Amount (INR)</label>
+            <input type="number" step="0.01" id="installment_amount_inr_s7_${installmentEntryIdCounter_S7}" name="installment_amount_inr[]" value="${instData.installment_amount_inr || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section7-calc-trigger">
+        </div>
+        <div>
+            <label for="bank_fee_inr_s7_${installmentEntryIdCounter_S7}" class="block text-sm font-medium text-gray-700 mb-1">Bank Fee (INR)</label>
+            <input type="number" step="0.01" id="bank_fee_inr_s7_${installmentEntryIdCounter_S7}" name="bank_fee_inr[]" value="${instData.bank_fee_inr || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section7-calc-trigger">
+        </div>
+        <div>
+            <label for="installment_date_s7_${installmentEntryIdCounter_S7}" class="block text-sm font-medium text-gray-700 mb-1">Installment Date</label>
+            <input type="date" id="installment_date_s7_${installmentEntryIdCounter_S7}" name="installment_date[]" value="${instData.installment_date || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="md:col-span-full lg:col-span-4"> <!-- Spanning full width -->
+            <label for="s7_installment_doc_${installmentEntryIdCounter_S7}" class="block text-sm font-medium text-gray-700 mb-1">Upload Installment Document(s)</label>
+            <input type="file" id="s7_installment_doc_${installmentEntryIdCounter_S7}" name="s7_fund_received_documents[]" accept=".pdf,.doc,.docx,.jpg,.png"  multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+            <div class="mt-2">
+                <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+                <div id="s7_installment_doc_display_container_${installmentEntryIdCounter_S7}" class="mt-1 space-y-1"></div>
+            </div>
+        </div>
+        <!-- ... last input field ... -->
+<button type="button" 
+                class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove this PI">
+            <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+        </button>
+    `;
+    
+    // Add robust file population logic
+    let filesToDisplay = [];
+    const fileData = instData.fund_received_document_s3_key;
+    if (Array.isArray(fileData)) {
+        filesToDisplay = fileData;
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        try { filesToDisplay = JSON.parse(fileData); } catch (e) {}
+    } else if (typeof fileData === 'string' && fileData.trim() !== '') {
+        filesToDisplay = [fileData];
+    }
+
+    const displayContainer = newEntryDiv.querySelector(`#s7_installment_doc_display_container_${installmentEntryIdCounter_S7}`);
+    if (displayContainer) {
+        if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+            filesToDisplay.forEach(key => {
+                if (!key) return;
+                const fileName = key.split('/').pop();
+                const fileElement = document.createElement('div');
+                fileElement.className = 'existing-file-item';
+                fileElement.innerHTML = `
+                    <span title="${fileName}">${fileName}</span>
+                    <button type="button" class="btn-remove-file">&times;</button>
+                    <input type="hidden" data-role="existing-installment-file" value="${key}">
+                `;
+                fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                displayContainer.appendChild(fileElement);
+            });
+        } else {
+            displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+        }
+    }
+    const removeButton = newEntryDiv.querySelector('.remove-single-item-btn');
+if (removeButton) {
+    removeButton.addEventListener('click', function() {
+        newEntryDiv.remove();
+        calculateS7TotalAmount(); // Recalculate after removing
+    });
+}
+    newEntryDiv.querySelectorAll('.section7-calc-trigger').forEach(el => {
+        el.addEventListener('input', calculateS7TotalAmount);
+    });
+
+    installmentsContainer_S7.appendChild(newEntryDiv);
+}
+    // Event listener for the global "+ Add Installment" button
+    if (addInstallmentButton_S7) {
+        addInstallmentButton_S7.addEventListener('click', function() {
+            _createAndAppendInstallmentEntry_S7(); // Add a new, blank entry
+            calculateS7TotalAmount(); // Recalculate after adding
+        });
+    }
+
+    // Event listener for the global "- Remove Last Installment" button
+    if (removeInstallmentButton_S7) {
+        removeInstallmentButton_S7.addEventListener('click', function() {
+            if (installmentsContainer_S7 && installmentsContainer_S7.children.length > 0) {
+                
+                installmentsContainer_S7.removeChild(installmentsContainer_S7.lastChild);
+                calculateS7TotalAmount(); // Recalculate after removing
+            }
+        });
+    }
+    
+    // Function for externalGrant.js to call to populate this section
+    window.populateInstallmentsGui_S7 = function(instDataArray = []) {
+        if (!installmentsContainer_S7) return;
+        
+        installmentsContainer_S7.innerHTML = ''; 
+        installmentEntryIdCounter_S7 = 0;   
+
+        if (instDataArray.length === 0) {
+            _createAndAppendInstallmentEntry_S7(); // Add one blank entry if no data
+        } else {
+            instDataArray.forEach(instData => {
+                _createAndAppendInstallmentEntry_S7(instData); 
+            });
+        }
+        calculateS7TotalAmount(); // Calculate totals after populating all entries
+    };
+
+    
+})();
+</script>                   
+
+                        <!-- Section 8: Project Budget Head -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="budgetHeadsAccordionContent_S8"> <!-- Unique aria-controls -->
+        <span>8. Project Budget Head</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+
+    <div id="budgetHeadsAccordionContent_S8" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Budget Head Information</legend>
+
+            <div id="budgetHeadContainer_S8" class="space-y-6"> <!-- Unique ID for container -->
+                <!-- Budget Entries will be dynamically added here by JavaScript -->
+                <!-- Initial template for cloning (will be hidden or first entry modified by JS) -->
+                <div class="budget-head-entry-template group grid grid-cols-1 md:grid-cols-3 gap-6 border p-4 rounded-md bg-gray-50 shadow-sm" style="display: none;"> <!-- Template, hidden initially -->
+                    <div class="space-y-2">
+                        <label for="budget_head_name_tpl_s8" class="block text-sm font-medium text-gray-700">Budget Head</label>
+                        <input type="text" id="budget_head_name_tpl_s8" name="budget_head_name[]" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="budget_percentage_tpl_s8" class="block text-sm font-medium text-gray-700">Percentage (%)</label>
+                        <input type="number" id="budget_percentage_tpl_s8" name="budget_percentage[]" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section8-calc-trigger" min="0" max="100" step="0.1">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="budget_head_value_inr_tpl_s8" class="block text-sm font-medium text-gray-700">Value (INR)</label>
+                        <input type="number" id="budget_head_value_inr_tpl_s8" name="budget_head_value_inr[]" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section8-calc-trigger" step="0.01">
+                    </div>
+                    <div class="space-y-2">
+                        <label for="actual_expense_inr_tpl_s8" class="block text-sm font-medium text-gray-700">Actual Expense (INR)</label>
+                        <input type="number" id="actual_expense_inr_tpl_s8" name="actual_expense_inr[]" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section8-calc-trigger" step="0.01">
+                    </div>
+                    <div class="space-y-2 md:col-span-1"> <!-- Adjust colspan as needed for 5 items in a 3-col grid -->
+                        <label for="balance_fund_inr_tpl_s8" class="block text-sm font-medium text-gray-700">Balance Fund (INR)</label>
+                        <input type="number" id="balance_fund_inr_tpl_s8" name="balance_fund_inr[]" class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100" readonly step="0.01">
+                    </div>
+                    <button type="button" 
+                class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove this Budget Head">
+            <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+        </button>
+         
+                </div>
+            </div>
+
+            <!-- Your original Action Buttons -->
+            <div class="flex space-x-2 mt-4">
+                <button type="button" id="addBudgetHeadButton_S8" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Budget Head
+                </button>
+                
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 8 script
+    let budgetHeadIdCounter_S8 = 0; // Renamed counter for this section
+    const budgetHeadContainer_S8 = document.getElementById('budgetHeadContainer_S8');
+    const addBudgetHeadButton_S8 = document.getElementById('addBudgetHeadButton_S8');
+
+    // Helper function to calculate balance for a given entry
+    function _calculateBalanceForEntry_S8(entryDiv) {
+        const budgetValueInput = entryDiv.querySelector('input[name="budget_head_value_inr[]"]');
+        const actualExpenseInput = entryDiv.querySelector('input[name="actual_expense_inr[]"]');
+        const balanceFundInput = entryDiv.querySelector('input[name="balance_fund_inr[]"]');
+
+        if (budgetValueInput && actualExpenseInput && balanceFundInput) {
+            const budgetVal = parseFloat(budgetValueInput.value) || 0;
+            const expenseVal = parseFloat(actualExpenseInput.value) || 0;
+            balanceFundInput.value = (budgetVal - expenseVal).toFixed(2);
+        }
+    }
+
+   
+
+function _addBudgetHeadEntryFromTemplate_S8(budgetData = {}) {
+    if (!budgetHeadContainer_S8) return;
+    
+    // Find the hidden template WRAPPER div
+    const templateWrapper = document.querySelector('.budget-head-entry-template');
+    if (!templateWrapper) {
+        console.error("Budget head template not found!");
+        return;
+    }
+    
+    
+    // We clone the FIRST CHILD of the wrapper (the actual content div), not the wrapper itself.
+    const newEntry = templateWrapper.cloneNode(true);
+    // --- END OF CRITICAL FIX ---
+
+    budgetHeadIdCounter_S8++;
+    
+    // Now that we have a proper clone, we prepare it for display
+    newEntry.classList.remove('budget-head-entry-template'); // No longer a template
+    newEntry.classList.add('budget-head-entry');           // Becomes a real entry
+    newEntry.style.display = '';                            // Make it visible!
+    newEntry.id = `budget_head_entry_s8_${budgetHeadIdCounter_S8}`;
+
+    // The rest of your existing logic for populating fields and adding event listeners is correct.
+    // I am including it here for a complete, copy-paste-ready solution.
+
+    // Update IDs and values for the cloned entry
+    const nameInput = newEntry.querySelector('input[name="budget_head_name[]"]');
+    if (nameInput) {
+        newEntry.querySelector('label[for="budget_head_name_tpl_s8"]').setAttribute('for', `budget_head_name_s8_${budgetHeadIdCounter_S8}`);
+        nameInput.id = `budget_head_name_s8_${budgetHeadIdCounter_S8}`;
+        nameInput.value = budgetData.budget_head || ''; // Using corrected DB name
+    }
+
+    const percentageInput = newEntry.querySelector('input[name="budget_percentage[]"]');
+    if (percentageInput) {
+        newEntry.querySelector('label[for="budget_percentage_tpl_s8"]').setAttribute('for', `budget_percentage_s8_${budgetHeadIdCounter_S8}`);
+        percentageInput.id = `budget_percentage_s8_${budgetHeadIdCounter_S8}`;
+        percentageInput.value = budgetData.budget_percentage || '';
+    }
+
+    const valueInput = newEntry.querySelector('input[name="budget_head_value_inr[]"]');
+    if (valueInput) {
+        newEntry.querySelector('label[for="budget_head_value_inr_tpl_s8"]').setAttribute('for', `budget_head_value_inr_s8_${budgetHeadIdCounter_S8}`);
+        valueInput.id = `budget_head_value_inr_s8_${budgetHeadIdCounter_S8}`;
+        valueInput.value = budgetData.budget_value || ''; // Using corrected DB name
+    }
+    
+    const expenseInput = newEntry.querySelector('input[name="actual_expense_inr[]"]');
+    if (expenseInput) {
+        newEntry.querySelector('label[for="actual_expense_inr_tpl_s8"]').setAttribute('for', `actual_expense_inr_s8_${budgetHeadIdCounter_S8}`);
+        expenseInput.id = `actual_expense_inr_s8_${budgetHeadIdCounter_S8}`;
+        expenseInput.value = budgetData.actual_expense || ''; // Using corrected DB name
+    }
+
+    const balanceInput = newEntry.querySelector('input[name="balance_fund_inr[]"]');
+    if (balanceInput) {
+        newEntry.querySelector('label[for="balance_fund_inr_tpl_s8"]').setAttribute('for', `balance_fund_inr_s8_${budgetHeadIdCounter_S8}`);
+        balanceInput.id = `balance_fund_inr_s8_${budgetHeadIdCounter_S8}`;
+        balanceInput.value = budgetData.balance_fund || ''; // Using corrected DB name
+    }
+
+    // Attach event listener for the cross button
+    const removeButton = newEntry.querySelector('.remove-single-item-btn');
+    if (removeButton) {
+        removeButton.addEventListener('click', () => newEntry.remove());
+    }
+
+    // Attach event listeners for calculation
+    newEntry.querySelectorAll('.section8-calc-trigger').forEach(el => {
+        el.addEventListener('input', () => _calculateBalanceForEntry_S8(newEntry));
+    });
+
+    budgetHeadContainer_S8.appendChild(newEntry);
+    _calculateBalanceForEntry_S8(newEntry);
+}
+
+// I am also including the updated `populateBudgetHeadsGui_S8` function
+// just to ensure everything is consistent with our data-fetching fixes.
+window.populateBudgetHeadsGui_S8 = function(budgetHeadDataArray = []) {
+    if (!budgetHeadContainer_S8) return;
+    
+    budgetHeadContainer_S8.querySelectorAll('.budget-head-entry').forEach(entry => entry.remove());
+    budgetHeadIdCounter_S8 = 0;
+
+    if (budgetHeadDataArray.length === 0) {
+        _addBudgetHeadEntryFromTemplate_S8();
+    } else {
+        budgetHeadDataArray.forEach(bhData => {
+            _addBudgetHeadEntryFromTemplate_S8(bhData); 
+        });
+    }
+};   
+
+
+// Event listener for your global "+ Add Budget Head" button
+    if (addBudgetHeadButton_S8) {
+        addBudgetHeadButton_S8.addEventListener('click', function() {
+            _addBudgetHeadEntryFromTemplate_S8(); // Add a blank entry
+        });
+    }    
+    
+    // Function for externalGrant.js to call to populate this section
+    window.populateBudgetHeadsGui_S8 = function(budgetHeadDataArray = []) {
+        if (!budgetHeadContainer_S8) return;
+        
+        // Clear only actual entries, not the template
+        budgetHeadContainer_S8.querySelectorAll('.grid:not(.budget-head-entry-template)').forEach(entry => entry.remove());
+        budgetHeadIdCounter_S8 = 0; // Reset counter for new population
+
+        if (budgetHeadDataArray.length === 0) {
+            _addBudgetHeadEntryFromTemplate_S8(); // Add one blank entry if no data
+        } else {
+            budgetHeadDataArray.forEach(bhData => {
+                _addBudgetHeadEntryFromTemplate_S8(bhData); 
+            });
+        }
+    };
+
+    
+})();
+</script>
+                        <!-- Section 9: Project Deliverables -->
+                         
+<div class="border rounded-md overflow-hidden">
+    <button type="button"
+        class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none"
+        aria-expanded="false" aria-controls="deliverablesAccordionContent_S9"> <!-- Unique aria-controls -->
+        <span>9. Project Deliverables</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+        stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25L12 15.75 4.5 8.25" />
+        </svg>
+    </button>
+
+    <div id="deliverablesAccordionContent_S9" class="accordion-content p-4 space-y-6 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+        <legend class="text-lg font-semibold text-gray-900 mb-4">Deliverables Information</legend>
+
+        <div id="deliverableContainer_S9" class="space-y-4"> <!-- Unique ID for container -->
+            <!-- Deliverable entries inserted dynamically -->
+        </div>
+
+        <div class="flex flex-wrap gap-3 mt-4">
+            <button type="button" id="addDeliverableButton_S9"
+            class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            Add Deliverable
+            </button>
+
+           
+        </div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 9 script
+    let deliverableEntryIdCounter_S9 = 0;
+    const deliverableContainer_S9 = document.getElementById('deliverableContainer_S9');
+    const addDeliverableButton_S9 = document.getElementById('addDeliverableButton_S9');
+    const removeDeliverableButton_S9 = document.getElementById('removeDeliverableButton_S9');
+
+function _createAndAppendDeliverableEntry_S9(deliverableData = {}) {
+    if (!deliverableContainer_S9) return;
+    deliverableEntryIdCounter_S9++;
+
+    const newEntryDiv = document.createElement('div');
+    newEntryDiv.className = 'deliverable-entry-s9 group grid grid-cols-1 md:grid-cols-2 gap-4 border p-4 rounded-md bg-gray-50 relative'; 
+
+    // --- CORRECTED AND FULLY STYLED HTML TEMPLATE ---
+    newEntryDiv.innerHTML = `
+        <div class="md:col-span-2">
+            <label for="deliverable_description_s9_${deliverableEntryIdCounter_S9}" class="block text-sm font-medium text-gray-700 mb-1">Project Deliverable</label>
+            <textarea id="deliverable_description_s9_${deliverableEntryIdCounter_S9}" name="deliverable_description[]" rows="2" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500" placeholder="Describe the deliverable...">${deliverableData.deliverable_description || deliverableData.deliverable_type || ''}</textarea>
+        </div>
+        <div>
+            <label for="deliverable_status_s9_${deliverableEntryIdCounter_S9}" class="block text-sm font-medium text-gray-700 mb-1">Status of Deliverable</label>
+            <select id="deliverable_status_s9_${deliverableEntryIdCounter_S9}" name="deliverable_status[]" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Select Status</option>
+                <option value="Not Started" ${deliverableData.deliverable_status === 'Not Started' ? 'selected' : ''}>Not Started</option>
+                <option value="In Progress" ${deliverableData.deliverable_status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Partially Completed" ${deliverableData.deliverable_status === 'Partially Completed' ? 'selected' : ''}>Partially Completed</option>
+                <option value="Completed" ${deliverableData.deliverable_status === 'Completed' ? 'selected' : ''}>Completed</option>
+                <option value="Delayed" ${deliverableData.deliverable_status === 'Delayed' ? 'selected' : ''}>Delayed</option>
+            </select>
+        </div>
+        <div>
+            <label for="deliverable_due_date_s9_${deliverableEntryIdCounter_S9}" class="block text-sm font-medium text-gray-700 mb-1">Deliverable Due Date</label>
+            <input type="date" id="deliverable_due_date_s9_${deliverableEntryIdCounter_S9}" name="deliverable_due_date[]" value="${deliverableData.deliverable_due_date || ''}" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+        </div>
+        <div class="md:col-span-2">
+            <label for="s9_deliverable_document_${deliverableEntryIdCounter_S9}" class="block text-sm font-medium text-gray-700 mb-1">Upload Deliverable Document(s)</label>
+            <input type="file" id="s9_deliverable_document_${deliverableEntryIdCounter_S9}" name="s9_deliverable_documents[]" accept=".pdf,.doc,.docx,.jpg,.png"  multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+            <div class="mt-2">
+                <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+                <div id="s9_deliverable_doc_display_container_${deliverableEntryIdCounter_S9}" class="mt-1 space-y-1"></div>
+            </div>
+        </div>
+        <button type="button" 
+                class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove this Deliverable">
+            <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+        </button>
+    `;
+    
+    // Add robust file population logic
+    let filesToDisplay = [];
+    const fileData = deliverableData.deliverable_document_s3_key;
+    if (Array.isArray(fileData)) {
+        filesToDisplay = fileData;
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        try { filesToDisplay = JSON.parse(fileData); } catch (e) {}
+    } else if (typeof fileData === 'string' && fileData.trim() !== '') {
+        filesToDisplay = [fileData];
+    }
+
+    const displayContainer = newEntryDiv.querySelector(`#s9_deliverable_doc_display_container_${deliverableEntryIdCounter_S9}`);
+    if (displayContainer) {
+        displayContainer.innerHTML = ''; // Clear previous
+        if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+            filesToDisplay.forEach(key => {
+                if (!key) return;
+                const fileName = key.split('/').pop();
+                const fileElement = document.createElement('div');
+                fileElement.className = 'existing-file-item';
+                fileElement.innerHTML = `
+                    <span title="${fileName}">${fileName}</span>
+                    <button type="button" class="btn-remove-file">&times;</button>
+                    <input type="hidden" data-role="existing-deliverable-file" value="${key}">
+                `;
+                fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                displayContainer.appendChild(fileElement);
+            });
+        } else {
+            displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+        }
+    }
+    
+    // Add event listener to the new remove button
+    const removeButton = newEntryDiv.querySelector('.remove-single-item-btn');
+    if (removeButton) {
+        removeButton.addEventListener('click', () => newEntryDiv.remove());
+    }
+    
+    deliverableContainer_S9.appendChild(newEntryDiv);
+}
+    // Event listener for your global "+ Add Deliverable" button
+    if (addDeliverableButton_S9) {
+        addDeliverableButton_S9.addEventListener('click', function() {
+            _createAndAppendDeliverableEntry_S9(); // Add a blank entry
+        });
+    }
+
+    // Event listener for your global "- Remove Deliverable" button (removes the last one)
+    if (removeDeliverableButton_S9) {
+        removeDeliverableButton_S9.addEventListener('click', function() {
+            if (deliverableContainer_S9 && deliverableContainer_S9.children.length > 0) {
+                // Optional: Prevent removing the very last one if one is mandatory
+                // if (deliverableContainer_S9.children.length === 1 && !confirm("Remove the last deliverable entry?")) {
+                //     return;
+                // }
+                deliverableContainer_S9.removeChild(deliverableContainer_S9.lastChild);
+            }
+        });
+    }
+    
+    // Function for externalGrant.js to call to populate this section
+    window.populateDeliverablesGui_S9 = function(deliverableDataArray = []) {
+        if (!deliverableContainer_S9) return;
+        
+        deliverableContainer_S9.innerHTML = ''; 
+        deliverableEntryIdCounter_S9 = 0;   
+
+        if (deliverableDataArray.length === 0) {
+            _createAndAppendDeliverableEntry_S9(); 
+        } else {
+            deliverableDataArray.forEach(delData => {
+                _createAndAppendDeliverableEntry_S9(delData); 
+            });
+        }
+    };
+
+})();
+</script>
+    
+                        
+    
+
+
+<!-- Section 10: Project Staff -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="projectStaffAccordionContent_S10">
+        <span>10. Project Staff</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div id="projectStaffAccordionContent_S10" class="accordion-content p-4 space-y-6 border-t border-gray-200">
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Staff Details</legend>
+
+            <div id="staffDetailsContainer_S10" class="space-y-4">
+                <!-- Staff entries added dynamically by JavaScript -->
+            </div>
+
+            <div class="flex flex-wrap gap-3 mt-4">
+                <button type="button" id="addStaffButton_S10" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    Add Staff
+                </button>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 10 script
+    let staffEntryIdCounter_S10 = 0;
+    const staffContainer_S10 = document.getElementById('staffDetailsContainer_S10');
+    const addStaffButton_S10 = document.getElementById('addStaffButton_S10');
+
+    
+function _createAndAppendStaffEntry_S10(staffData = {}) {
+    if (!staffContainer_S10) return;
+    staffEntryIdCounter_S10++;
+
+    const newEntryDiv = document.createElement('div');
+    newEntryDiv.className = 'staff-entry-s10 group grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative';
+    
+    // Default values for dates and status
+    const joiningDate = staffData.staff_joining_date ? (staffData.staff_joining_date.split('T')[0]) : '';
+    const endDate = staffData.staff_end_date ? (staffData.staff_end_date.split('T')[0]) : '';
+    const status = staffData.staff_status || 'active';
+
+
+// Replace the entire newEntryDiv.innerHTML line
+newEntryDiv.innerHTML = `
+    <div class="md:col-span-4 -mb-2"><h4 class="text-md font-semibold text-gray-600 border-b pb-1">Staff Member</h4></div>
+    
+    <div>
+        <label for="staff_name_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+        <input type="text" id="staff_name_s10_${staffEntryIdCounter_S10}" name="staff_name[]" value="${staffData.staff_name || ''}">
+    </div>
+    <div>
+        <label for="staff_role_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Role</label>
+        <input type="text" id="staff_role_s10_${staffEntryIdCounter_S10}" name="staff_role[]" value="${staffData.staff_role || ''}">
+    </div>
+    <div>
+        <label for="staff_joining_date_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Joining Date</label>
+        <input type="date" id="staff_joining_date_s10_${staffEntryIdCounter_S10}" name="staff_joining_date[]" value="${joiningDate}">
+    </div>
+    <div>
+        <label for="staff_end_date_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+        <input type="date" id="staff_end_date_s10_${staffEntryIdCounter_S10}" name="staff_end_date[]" value="${endDate}">
+    </div>
+    <div>
+        <label for="staff_status_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+        <select id="staff_status_s10_${staffEntryIdCounter_S10}" name="staff_status[]">
+            <option value="active" ${status === 'active' ? 'selected' : ''}>Active</option>
+            <option value="inactive" ${status === 'inactive' ? 'selected' : ''}>Inactive</option>
+        </select>
+    </div>
+    <div>
+        <label for="staff_stipend_rate_inr_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Stipend Rate (INR)</label>
+        <input type="number" step="0.01" id="staff_stipend_rate_inr_s10_${staffEntryIdCounter_S10}" name="staff_stipend_rate_inr[]" value="${staffData.staff_stipend_rate_inr || ''}">
+    </div>
+    <div>
+        <label for="staff_months_stipend_paid_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Months Stipend Paid</label>
+        <input type="number" id="staff_months_stipend_paid_s10_${staffEntryIdCounter_S10}" name="staff_months_stipend_paid[]" value="${staffData.staff_months_stipend_paid || ''}" min="0">
+    </div>
+    <div>
+        <label for="staff_total_stipend_paid_inr_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Total Stipend Paid (INR)</label>
+        <input type="number" step="0.01" id="staff_total_stipend_paid_inr_s10_${staffEntryIdCounter_S10}" name="staff_total_stipend_paid_inr[]" value="${staffData.staff_total_stipend_paid_inr || ''}">
+    </div>
+    <div>
+        <label for="staff_per_diem_paid_inr_s10_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Total Per Diem Paid (INR)</label>
+        <input type="number" step="0.01" id="staff_per_diem_paid_inr_s10_${staffEntryIdCounter_S10}" name="staff_per_diem_paid_inr[]" value="${staffData.staff_per_diem_paid_inr || ''}">
+    </div>
+
+    <div class="md:col-span-2">
+        <label for="s10_staff_photograph_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Upload Photograph(s)</label>
+        <input type="file" id="s10_staff_photograph_${staffEntryIdCounter_S10}" name="s10_staff_photographs[]" multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="mt-2"><p class="text-sm font-medium text-gray-700">Existing File(s):</p><div id="s10_staff_photograph_display_container_${staffEntryIdCounter_S10}" class="mt-1 space-y-1"></div></div>
+    </div>
+    <div class="md:col-span-2">
+        <label for="s10_staff_agreement_${staffEntryIdCounter_S10}" class="block text-sm font-medium text-gray-700 mb-1">Upload Agreement(s)</label>
+        <input type="file" id="s10_staff_agreement_${staffEntryIdCounter_S10}" name="s10_staff_agreements[]" multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="mt-2"><p class="text-sm font-medium text-gray-700">Existing File(s):</p><div id="s10_staff_agreement_display_container_${staffEntryIdCounter_S10}" class="mt-1 space-y-1"></div></div>
+    </div>
+            <button type="button" 
+                class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                title="Remove this Staff Member">
+            <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+        </button>
+`.replaceAll(/<input[^>]*>|<select[^>]*>/g, (match) => {
+    // Add standard styling to all input and select elements
+    return match.replace('>', ' class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">');
+});
+    // Helper to populate a file display container
+    const populateFiles = (containerId, fileData, dataRole) => {
+        let filesToDisplay = [];
+        if (Array.isArray(fileData)) filesToDisplay = fileData;
+        else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) try { filesToDisplay = JSON.parse(fileData); } catch (e) {}
+        else if (typeof fileData === 'string' && fileData.trim() !== '') filesToDisplay = [fileData];
+
+        const displayContainer = newEntryDiv.querySelector(containerId);
+        if (displayContainer) {
+            displayContainer.innerHTML = '';
+            if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+                filesToDisplay.forEach(key => {
+                    if (!key) return;
+                    const fileName = key.split('/').pop();
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'existing-file-item';
+                    fileElement.innerHTML = `<span title="${fileName}">${fileName}</span><button type="button" class="btn-remove-file">&times;</button><input type="hidden" data-role="${dataRole}" value="${key}">`;
+                    fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                    displayContainer.appendChild(fileElement);
+                });
+            } else {
+                displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+            }
+        }
+    };
+    
+    // Populate both file displays
+    populateFiles(`#s10_staff_photograph_display_container_${staffEntryIdCounter_S10}`, staffData.staff_photograph_s3_key, 'existing-staff-photo');
+    populateFiles(`#s10_staff_agreement_display_container_${staffEntryIdCounter_S10}`, staffData.staff_agreement_s3_key, 'existing-staff-agreement');
+
+    newEntryDiv.querySelector('.remove-single-item-btn').addEventListener('click', () => newEntryDiv.remove());
+    staffContainer_S10.appendChild(newEntryDiv);
+}
+
+    if (addStaffButton_S10) {
+        addStaffButton_S10.addEventListener('click', function() {
+            _createAndAppendStaffEntry_S10(); 
+        });
+    }
+    
+    window.populateStaffGui_S10 = function(staffDataArray = []) {
+        if (!staffContainer_S10) return;
+        
+        staffContainer_S10.innerHTML = ''; 
+        staffEntryIdCounter_S10 = 0;   
+
+        if (staffDataArray && staffDataArray.length === 0) { // Explicitly check for empty array
+            _createAndAppendStaffEntry_S10(); 
+        } else if (staffDataArray) { // Check if array exists
+            staffDataArray.forEach(staffData => {
+                _createAndAppendStaffEntry_S10(staffData); 
+            });
+        } else { // Fallback for null/undefined
+             _createAndAppendStaffEntry_S10();
+        }
+    };
+})();
+</script>    
+
+
+  
+                         <!-- Section 11: Project Equipments -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="projectEquipmentsAccordionContent_S11"> <!-- Unique aria-controls -->
+        <span>11. Project Equipments</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+        </svg>
+    </button>
+    <div id="projectEquipmentsAccordionContent_S11" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Equipment Purchased</legend>
+            
+            <!-- Hidden Template for an Equipment Entry -->
+            <div id="equipmentEntryTemplate_S11" style="display: none;">
+                <div class="equipment-entry-s11 group grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-4 p-4 border rounded-md bg-gray-50 relative">
+                    <div class="md:col-span-2">
+                        <label for="name_of_equipment_tpl_s11" class="block text-sm font-medium text-gray-700 mb-1">Name(s) of Equipment(s)</label>
+                        <textarea data-name="equipment_name_description[]" rows="2" placeholder="e.g. Laptop, Spectrometer, GPS Device.." class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+                    <div>
+                        <label for="quantity_of_equipment_tpl_s11" class="block text-sm font-medium text-gray-700 mb-1">Quantity Purchased</label>
+                        <input type="number" data-name="quantity_of_equipment[]" min="0" inputmode="numeric" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section11-cost-trigger">
+                    </div>
+                    <div>
+                        <label for="cost_per_unit_inr_tpl_s11" class="block text-sm font-medium text-gray-700 mb-1">Cost per Unit (INR)</label>
+                        <input type="number" step="0.01" data-name="cost_per_unit_inr[]" inputmode="decimal" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 section11-cost-trigger">
+                    </div>
+                    <div class="md:col-span-2"> <!-- Total Cost needs to span full width or be placed appropriately -->
+                        <label for="total_cost_equipments_inr_tpl_s11" class="block text-sm font-medium text-gray-700 mb-1">Total Cost of Equipments (INR)</label>
+                        <input type="number" step="0.01" data-name="total_cost_equipments_inr[]" inputmode="decimal" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500 bg-gray-100" readonly>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="s11_equipment_bill_tpl_s11" class="block text-sm font-medium text-gray-700 mb-1">Upload Bills</label>
+                        <input 
+                            type="file" 
+                            data-name="s11_equipment_bills_files[]" 
+                            accept=".pdf,.doc,.docx,.jpg,.png" 
+                            class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500"
+                        >
+                        <p class="mt-1 text-sm text-gray-500">Current file: <span data-role="file-display">None</span></p>
+                        <input type="hidden" data-name="existing_s11_equipment_bill_s3_key[]" value="">
+                    </div>
+                    <button type="button" 
+                        class="remove-single-item-btn absolute top-1 right-1 text-gray-400 hover:text-red-600 p-1 rounded-full hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove this Equipment">
+                        <svg class="w-4 h-4 pointer-events-none" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>
+                    </button>
+                </div>
+            </div>
+
+            <div id="equipmentContainer_S11" class="space-y-4"> <!-- Unique ID for actual container -->
+                <!-- Equipment Entries will be dynamically added here by JavaScript -->
+            </div>
+
+            <div class="flex justify-start mt-4 gap-3">
+    <button type="button" id="addEquipmentButton_S11" class="flex items-center px-3 py-2 border border-green-600 text-green-600 rounded-md text-sm hover:bg-green-50">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+        Add Equipment Manually
+    </button>
+    
+    <!-- *** THIS IS THE NEW BUTTON *** -->
+    <button type="button" id="assignInventoryButton_S11" class="flex items-center px-3 py-2 border border-blue-600 text-blue-600 rounded-md text-sm hover:bg-blue-50">
+        <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M7 3a1 1 0 000 2h6a1 1 0 100-2H7zM4 7a1 1 0 011-1h10a1 1 0 110 2H5a1 1 0 01-1-1zM5 11a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" /></svg>
+        Assign from Inventory
+    </button>
+</div>
+        </fieldset>
+    </div>
+</div>
+
+<script>
+(function() { // IIFE for Section 11 script
+    let equipmentEntryIdCounter_S11 = 0;
+    const equipmentContainer_S11 = document.getElementById('equipmentContainer_S11');
+    const addEquipmentButton_S11 = document.getElementById('addEquipmentButton_S11');
+    const equipmentTemplate_S11 = document.getElementById('equipmentEntryTemplate_S11');
+
+    function _calculateEquipmentTotalCost_S11(entryDiv) {
+        const quantityInput = entryDiv.querySelector('input[name="quantity_of_equipment[]"]');
+        const costPerUnitInput = entryDiv.querySelector('input[name="cost_per_unit_inr[]"]');
+        const totalCostInput = entryDiv.querySelector('input[name="total_cost_equipments_inr[]"]');
+
+        if (quantityInput && costPerUnitInput && totalCostInput) {
+            const qty = parseInt(quantityInput.value) || 0;
+            const cost = parseFloat(costPerUnitInput.value) || 0;
+            totalCostInput.value = (qty * cost).toFixed(2);
+        }
+    }
+
+
+
+    
+function _createAndAppendEquipmentEntry_S11(equipData = {}) {
+    if (!equipmentContainer_S11) {
+        console.error("Equipment container for Section 11 not found!");
+        return;
+    }
+    equipmentEntryIdCounter_S11++;
+
+    // Create the main container div for the new entry.
+    const newEntryDiv = document.createElement('div');
+
+    // --- CONDITION: Check if the item is from the central inventory ---
+    if (equipData.isFromInventory) {
+        // --- RENDER A READ-ONLY BLOCK FOR ASSIGNED INVENTORY ---
+        newEntryDiv.className = 'equipment-entry-s11 group grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 mb-4 p-4 border rounded-md bg-blue-50 relative';
+        newEntryDiv.innerHTML = `
+            <div class="md:col-span-4">
+                <p class="text-sm font-medium text-gray-700">
+                    <i class="fas fa-tag mr-2 text-blue-600"></i>
+                    <span class="font-bold">Assigned from Inventory</span>
+                </p>
+            </div>
+            <div>
+                <strong class="block text-xs text-gray-500 uppercase">Item Description</strong>
+                <p class="text-base">${equipData.item || 'N/A'}</p>
+            </div>
+            <div>
+                <strong class="block text-xs text-gray-500 uppercase">Make/Brand</strong>
+                <p class="text-base">${equipData.make || 'N/A'}</p>
+            </div>
+            <div>
+                <strong class="block text-xs text-gray-500 uppercase">Asset Tag No.</strong>
+                <p class="text-base font-mono">${equipData.tag_no || 'N/A'}</p>
+            <div class="text-right">
+        <button type="button" class="unassign-inventory-btn text-red-600 hover:text-red-800 text-sm font-medium" data-inventory-id="${equipData.id}">
+            <i class="fas fa-undo-alt mr-1"></i> Unassign
+        </button>
+    </div>
+        `;
+
+    } else {
+        // --- RENDER THE ORIGINAL EDITABLE FORM FOR MANUAL ENTRIES ---
+        // This is your original, working code, now placed inside the 'else' block.
+        
+        newEntryDiv.className = 'equipment-entry-s11 group grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4 mb-4 p-4 border rounded-md bg-gray-50 relative';
+        
+        // We still need the template for manual entries
+        const templateNode = equipmentTemplate_S11.firstElementChild.cloneNode(true);
+        newEntryDiv.innerHTML = templateNode.innerHTML;
+        newEntryDiv.id = `equipment_entry_s11_${equipmentEntryIdCounter_S11}`;
+
+        // Populate and set up the manual form fields
+        newEntryDiv.querySelectorAll('[data-name]').forEach(el => {
+            const name = el.getAttribute('data-name');
+            const id = `${name.replace('[]', '')}_s11_${equipmentEntryIdCounter_S11}`;
+            el.id = id;
+            el.name = name;
+            const label = newEntryDiv.querySelector(`label[for="${el.getAttribute('data-name')}_tpl_s11"]`);
+            if (label) {
+                label.setAttribute('for', id);
+            }
+        });
+
+        newEntryDiv.querySelector('[name="equipment_name_description[]"]').value = equipData.equipment_name_description || equipData.name_of_equipment || '';
+        newEntryDiv.querySelector('[name="quantity_of_equipment[]"]').value = equipData.quantity_of_equipment || '';
+        newEntryDiv.querySelector('[name="cost_per_unit_inr[]"]').value = equipData.cost_per_unit_inr || equipData.cost_per_unit || '';
+        newEntryDiv.querySelector('[name="total_cost_equipments_inr[]"]').value = equipData.total_cost_equipments_inr || equipData.total_cost || '';
+
+        // Upgrade the file input area
+        const fileInputContainer = newEntryDiv.querySelector('input[type="file"]').parentElement;
+        fileInputContainer.innerHTML = `
+            <label for="s11_equipment_bill_${equipmentEntryIdCounter_S11}" class="block text-sm font-medium text-gray-700 mb-1">Upload Bill(s)</label>
+            <input type="file" id="s11_equipment_bill_${equipmentEntryIdCounter_S11}" name="s11_equipment_bills_files[]" accept=".pdf,.doc,.docx,.jpg,.png" multiple class="block w-full text-sm text-gray-700 border border-gray-300 rounded-md shadow-sm file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:ring-indigo-500 focus:border-indigo-500">
+            <div class="mt-2">
+                <p class="text-sm font-medium text-gray-700">Existing File(s):</p>
+                <div id="s11_equipment_bill_display_container_${equipmentEntryIdCounter_S11}" class="mt-1 space-y-1"></div>
+            </div>
+        `;
+
+        // Populate existing files for the manual entry
+        let filesToDisplay = [];
+        const fileData = equipData.equipment_bills_s3_key;
+        if (Array.isArray(fileData)) { filesToDisplay = fileData; }
+        else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) { try { filesToDisplay = JSON.parse(fileData); } catch (e) {} }
+        else if (typeof fileData === 'string' && fileData.trim() !== '') { filesToDisplay = [fileData]; }
+        
+        const displayContainer = newEntryDiv.querySelector(`#s11_equipment_bill_display_container_${equipmentEntryIdCounter_S11}`);
+        if (displayContainer) {
+            displayContainer.innerHTML = '';
+            if (filesToDisplay.length > 0 && filesToDisplay[0]) {
+                filesToDisplay.forEach(key => {
+                    if (!key) return;
+                    const fileName = key.split('/').pop();
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'existing-file-item';
+                    fileElement.innerHTML = `<span title="${fileName}">${fileName}</span><button type="button" class="btn-remove-file">&times;</button><input type="hidden" data-role="existing-equipment-file" value="${key}">`;
+                    fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
+                    displayContainer.appendChild(fileElement);
+                });
+            } else {
+                displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+            }
+        }
+        
+        // Attach event listeners for the manual entry
+        newEntryDiv.querySelector('.remove-single-item-btn').addEventListener('click', () => newEntryDiv.remove());
+        newEntryDiv.querySelectorAll('.section11-cost-trigger').forEach(el => {
+            el.addEventListener('input', () => _calculateEquipmentTotalCost_S11(newEntryDiv));
+        });
+        
+        _calculateEquipmentTotalCost_S11(newEntryDiv);
+    }
+
+    // This line runs for both types of entries
+    equipmentContainer_S11.appendChild(newEntryDiv);
+}
+    if (addEquipmentButton_S11) {
+        addEquipmentButton_S11.addEventListener('click', function() {
+            _createAndAppendEquipmentEntry_S11();
+        });
+    }
+    
+    window.populateEquipmentsGui_S11 = function(equipDataArray = []) {
+        if (!equipmentContainer_S11) return;
+        
+        equipmentContainer_S11.innerHTML = ''; 
+        equipmentEntryIdCounter_S11 = 0;   
+
+        if (equipDataArray.length === 0) {
+            _createAndAppendEquipmentEntry_S11(); 
+        } else {
+            equipDataArray.forEach(equipData => {
+                _createAndAppendEquipmentEntry_S11(equipData); 
+            });
+        }
+    };
+})();
+</script>
+                       
+                       
+                       <!-- Section 12: Files & Other -->
+<div class="border rounded-md overflow-hidden">
+    <button type="button" class="accordion-button w-full flex justify-between items-center text-left px-4 py-3 bg-gray-100 hover:bg-gray-200 font-medium text-gray-800 focus:outline-none" aria-expanded="false" aria-controls="filesOtherAccordionContent_S12"> <!-- Unique aria-controls -->
+        <span>12. Files & Other</span>
+        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" /></svg>
+    </button>
+    <div id="filesOtherAccordionContent_S12" class="accordion-content p-4 space-y-4 border-t border-gray-200"> <!-- Unique ID -->
+        <fieldset>
+            <legend class="text-lg font-medium text-gray-900 mb-4">Supporting Files</legend>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <!-- Changed label 'for', input 'id' and 'name' -->
+                    <label for="s12_project_image_file" class="block text-sm font-medium text-gray-700 mb-1">Upload Project Image</label>
+                    <input 
+                        type="file" 
+                        id="s12_project_image_file" 
+                        name="s12_project_image_file" 
+                        accept="image/jpeg,image/png,image/gif" 
+                        multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                    <p class="mt-1 text-xs text-gray-500">Allowed types: JPG, PNG, GIF. Max size: 2MB.</p>
+                    <!-- Display span for current file -->
+                    <div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing Image(s):</p>
+    <div id="s12_project_image_file_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+                </div>
+                <div>
+                    <!-- Changed label 'for', input 'id' and 'name' -->
+                    <label for="s12_final_report_file" class="block text-sm font-medium text-gray-700 mb-1">Upload Final Report/Key Document</label>
+                    <input 
+                        type="file" 
+                        id="s12_final_report_file" 
+                        name="s12_final_report_file" 
+                        accept=".pdf,.doc,.docx" 
+                        multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Allowed types: PDF, DOC, DOCX. Max size: 2MB.</p>
+                    <!-- Display span for current file -->
+                    <div class="mt-2">
+    <p class="text-sm font-medium text-gray-700">Existing Report(s):</p>
+    <div id="s12_final_report_file_display_container" class="mt-1 space-y-1">
+        <!-- File list will be generated here by JavaScript -->
+        <span class="text-sm text-gray-500">None</span>
+    </div>
+</div>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+
+                    <!-- Form Action Buttons -->
+                    <div class="flex justify-end gap-3 pt-8 border-t border-gray-200 mt-8">
+                        <button type="button" id="cancelBtn" class="btn btn-secondary border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn-save inline-flex items-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5 mr-2"><path d="M3 3.75A1.75 1.75 0 0 1 4.75 2h10.5A1.75 1.75 0 0 1 17 3.75v10.757l-2.243-2.243a.75.75 0 0 0-1.06 0L11 15.06l-1.72-1.72a.75.75 0 0 0-1.06 0L3 18.25V3.75Zm11.5 1.5a.75.75 0 0 0 0-1.5h-8a.75.75 0 0 0 0 1.5h8Z" /><path d="M4.75 4.25a.75.75 0 0 0-.75.75v11.69l2.22-2.219a2.25 2.25 0 0 1 3.182 0l1.72 1.72 2.242-2.243a2.25 2.25 0 0 1 3.182 0L17 15.19V4.25a.75.75 0 0 0-.75-.75H4.75Z" /></svg>
+                            Save Grant Details
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Research Data Table Container -->
+         </main>
+
+    <!-- In externalGrant.html, REPLACE your existing modal with this entire block -->
+
+<div id="grantDetailsModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    
+    <!-- THE FIX IS HERE: Ensure this div has id="grantDetailsModalContent" -->
+    <div class="modal-content" id="grantDetailsModalContent">
+        
+        <div class="modal-header">
+             <h2 id="modalTitle">Grant Details</h2>
+             <button type="button" class="close-btn" onclick="closeModal('grantDetailsModal')" aria-label="Close">×</button>
+        </div>
+
+        <div class="modal-body" id="modalBodyContent">
+            <!-- This content will be replaced by the dashboard -->
+            <p style="text-align: center;">Loading details...</p>
+        </div>
+
+         <div class="modal-footer">
+             <button type="button" class="btn" onclick="closeModal('grantDetailsModal')">Close</button>
+        </div>
+
+    </div>
+</div>
+
+<!-- (The rest of your HTML, like the #assignInventoryModal, stays the same) -->
+
+    <!-- // New Code -->
+      <div id="assignInventoryModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="assignModalTitle">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                 <h2 id="assignModalTitle">Assign Asset from Inventory</h2>
+                 <button type="button" class="close-btn" id="closeAssignModalBtn" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body" id="assignModalBody">
+    <!-- This outer div now uses space-y-4 for nice vertical spacing -->
+    <div style="padding: 1rem;" class="space-y-4">
+
+        <!-- This is the original asset dropdown, now wrapped in its own div -->
+        <div>
+            <label for="inventoryDropdown" class="block text-sm font-medium text-gray-700 mb-1">Select Available Asset</label>
+            <select id="inventoryDropdown" name="inventoryDropdown" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="">Loading available assets...</option>
+            </select>
+        </div>
+
+        <!-- *** THIS IS THE NEW PI DROPDOWN CONTAINER YOU NEED TO ADD *** -->
+        <div id="piDropdownContainer" style="display: none;"> <!-- Initially hidden -->
+            <label for="piDropdown" class="block text-sm font-medium text-gray-700 mb-1">Assign to Specific PI</label>
+            <select id="piDropdown" name="piDropdown" class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm sm:text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                <!-- PI options will be populated by JavaScript -->
+            </select>
+        </div>
+        
+    </div>
+</div>
+            <div class="modal-footer">
+                 <button type="button" class="btn" id="cancelAssignBtn">Cancel</button>
+                 <button type="button" class="btn add" id="confirmAssignBtn">
+                    <i class="fas fa-link mr-2"></i>Assign Asset
+                 </button>
+            </div>
+        </div>
+    </div>
+<!-- ======================================================= -->
+<!-- ===         NEW ADVANCED FILTER MODAL (CORRECTED)   === -->
+<!-- ======================================================= -->
+<div id="advancedFilterModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="filterModalTitle">
+    <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+            <h2 id="filterModalTitle">Advanced Grant Filters</h2>
+            <button type="button" id="closeFilterModalBtn" class="modal-close-btn" aria-label="Close">×</button>
+        </div>
+        
+        <!-- THE FORM TAG NOW WRAPS THE BODY AND FOOTER -->
+        <form id="advancedFilterForm">
+            <div class="modal-body">
+                <div class="filter-grid">
+                    
+                    <!-- Filter Group: JGU School/Dept -->
+                    <div class="filter-form-group">
+                        <label class="filter-label">JGU School/Dept</label>
+                        <div class="checkbox-group-scrollable">
+                            <!-- Dynamically populated list of schools -->
+                            <label><input type="checkbox" name="filterSchools" value="Jindal Global Law School"> Jindal Global Law School</label>
+                            <label><input type="checkbox" name="filterSchools" value="Jindal Global Business School"> Jindal Global Business School</label>
+                            <label><input type="checkbox" name="filterSchools" value="Jindal School of Art and Architecture"> Jindal School of Art & Architecture</label>
+                            <!-- Add all other school options here as needed -->
+                             <label><input type="checkbox" name="filterSchools" value="Jindal School of International Affairs"> Jindal School of International Affairs</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Government and Public Policy"> Jindal School of Government and Public Policy</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Liberal Arts and Humanities"> Jindal School of Liberal Arts and Humanities</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Journalism and Communication"> Jindal School of Journalism and Communication</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Banking and Finance"> Jindal School of Banking and Finance</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Environment and Sustainability"> Jindal School of Environment and Sustainability</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Psychology and Counselling"> Jindal School of Psychology and Counselling</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Languages and Literature"> Jindal School of Languages and Literature</label>
+                    <label><input type="checkbox" name="filterSchools" value="Jindal School of Public Health and Human Development"> Jindal School of Public Health and Human Development</label>
+                            <label><input type="checkbox" name="filterSchools" value="Other"> Other</label>
+                        </div>
+                    </div>
+
+                    <!-- Filter Group: Type of Grant -->
+                    <div class="filter-form-group">
+                        <label class="filter-label">Type of Grant</label>
+                        <div class="checkbox-group">
+                            <label><input type="checkbox" name="filterGrantType" value="Research Projects"> Research Projects</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Curricula Co-development"> Curricula Co-development</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Faculty Development Programmes"> Faculty Development</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Research Centres & Initiatives"> Research Centres</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Chair Professorships"> Chair Professorships</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Consultancy Projects"> Consultancy Projects</label>
+                            <label><input type="checkbox" name="filterGrantType" value="Massive Open Online Courses (MOOC)"> MOOC</label>
+                        </div>
+                    </div>
+
+                    <!-- Filter Group: Text and Radio Inputs -->
+                    <div class="filter-form-group span-col-1">
+                         <label for="filterProjectTitle" class="filter-label">Project Title Contains</label>
+                         <input type="text" id="filterProjectTitle" placeholder="e.g., Climate Change">
+                         
+                         <label for="filterFundingAgency" class="filter-label mt-4">Funding Agency Contains</label>
+                         <input type="text" id="filterFundingAgency" placeholder="e.g., ICSSR, EU">
+                         
+                         <label for="filterCollaborator" class="filter-label mt-4">Collaborator Contains</label>
+                         <input type="text" id="filterCollaborator" placeholder="e.g., Harvard, UNICEF">
+                         
+                         <label for="filterCollaboratorCountry" class="filter-label mt-4">Collaborator Country</label>
+                         <input type="text" id="filterCollaboratorCountry" placeholder="e.g., USA, India, Germany">
+                    </div>
+
+                    <div class="filter-form-group span-col-1">
+                         <label class="filter-label">Funder Type</label>
+                         <div class="checkbox-group-horizontal">
+                            <label><input type="checkbox" name="filterFunderType" value="Domestic"> Domestic</label>
+                            <label><input type="checkbox" name="filterFunderType" value="International"> International</label>
+                         </div>
+
+                         <label for="filterStartDate" class="filter-label mt-4">Project Secured Date Range</label>
+                         <div class="date-range-group">
+                            <input type="date" id="filterStartDate">
+                            <span>to</span>
+                            <input type="date" id="filterEndDate">
+                         </div>
+
+                         <label for="filterMinAmount" class="filter-label mt-4">Sanctioned Amount (INR) Range</label>
+                         <div class="amount-range-group">
+                            <input type="number" id="filterMinAmount" placeholder="Min Amount">
+                            <span>-</span>
+                            <input type="number" id="filterMaxAmount" placeholder="Max Amount">
+                         </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="clearFiltersBtn" class="btn btn-secondary">Clear All Filters</button>
+                <button type="submit" class="btn btn-primary">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <script>
+        // Global Accordion Script
+        document.addEventListener('DOMContentLoaded', function () {
+            const accordionButtons = document.querySelectorAll('.accordion-button');
+            accordionButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const contentId = button.getAttribute('aria-controls');
+                    const content = document.getElementById(contentId);
+                    const isExpanded = button.getAttribute('aria-expanded') === 'true';
+
+                    if (isExpanded) {
+                        content.style.display = 'none';
+                        button.setAttribute('aria-expanded', 'false');
+                    } else {
+                        content.style.display = 'block';
+                        button.setAttribute('aria-expanded', 'true');
+                    }
+                });
+            });
+             // Initialize: ensure only the first accordion section is open by default if desired
+            document.querySelectorAll('.accordion-content').forEach((content, index) => {
+                const button = document.querySelector(`[aria-controls="${content.id}"]`);
+                if (index === 0) { // Open first section
+                    content.style.display = 'block';
+                    if(button) button.setAttribute('aria-expanded', 'true');
+                } else { // Close others
+                    content.style.display = 'none';
+                    if(button) button.setAttribute('aria-expanded', 'false');
+                }
+            });
+        });
+
+
+        function populateMultiFileDisplay(fileInputBaseId, fileKeysArray) {
+    const displayContainerId = `${fileInputBaseId}_display_container`;
+    const displayContainer = document.getElementById(displayContainerId);
+    if (!displayContainer) return;
+
+    displayContainer.innerHTML = ''; // Clear previous content
+
+    if (Array.isArray(fileKeysArray) && fileKeysArray.length > 0) {
+        fileKeysArray.forEach(key => {
+            if (!key) return;
+            const fileName = key.split('/').pop();
+            const fileElement = document.createElement('div');
+            fileElement.className = 'existing-file-item';
+            // This hidden input is crucial for the UPDATE logic
+            fileElement.innerHTML = `
+                <span title="${fileName}">${fileName}</span>
+                <button type="button" class="btn-remove-file" title="Remove this file">&times;</button>
+                <input type="hidden" name="existing_files_${fileInputBaseId}[]" value="${key}">
+            `;
+            fileElement.querySelector('.btn-remove-file').addEventListener('click', () => {
+                fileElement.remove();
+            });
+            displayContainer.appendChild(fileElement);
+        });
+    } else {
+        displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+    }
+}
+
+    </script>
+</body>
+</html>

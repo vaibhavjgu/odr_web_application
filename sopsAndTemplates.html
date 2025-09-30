@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOP & Templates Management</title>
+    
+    <!-- IMPORTANT: Kept your original security check -->
+    <script>
+        const token = localStorage.getItem('accessToken');
+        if (!token) {
+            alert('Access Denied. You must be logged in to view this page.');
+            window.location.href = '/'; 
+        }
+    </script>
+    
+    <!-- External Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Link to your shared application stylesheet -->
+    <link rel="stylesheet" href="/css/sopsAndTemplates.css">
+    
+    <!-- Tailwind CSS (for utility classes) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <!-- NEW: Overlay for mobile menu -->
+    <div class="sidebar-overlay"></div>
+
+    <div class="app-container">
+        <!-- ===== UPDATED: Shared Sidebar with New Functionality ===== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-branding">
+                    <!-- Kept your original logo path -->
+                    <img src="/css/UniversityLogo.png" alt="University Logo" class="sidebar-logo"> 
+                    <h1 class="sidebar-title">Research Portal</h1>
+                </div>
+                <!-- NEW: Button to collapse the sidebar on desktop -->
+                <button type="button" class="sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar">
+                    <i class="fa-solid fa-angles-left"></i>
+                </button>
+            </div>
+            <nav class="sidebar-nav">
+                <!-- Kept your original navigation links -->
+                <a href="welcome.html" class="nav-item">
+                    <i class="fa-solid fa-house"></i>
+                    <span class="nav-text">Home</span>
+                </a>
+                <a href="externalGrant.html" class="nav-item">
+                    <i class="fa-solid fa-file-invoice-dollar"></i>
+                    <span class="nav-text">External Grants</span>
+                </a>
+                <a href="internalGrant.html" class="nav-item">
+                    <i class="fa-solid fa-building-columns"></i>
+                    <span class="nav-text">Internal Grants</span>
+                </a>
+                <a href="inventory.html" class="nav-item">
+                     <i class="fa-solid fa-boxes-stacked"></i>
+                     <span class="nav-text">Inventory</span>
+                </a>
+                <a href="sopsAndTemplates.html" class="nav-item active" aria-current="page">
+                    <i class="fa-solid fa-file-lines"></i>
+                    <span class="nav-text">SOP & Templates</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="profile-section">
+                    <div class="profile-avatar"></div>
+                    <span class="username">User</span>
+                </div>
+                <!-- UPDATED: Logout button now uses an ID for the script -->
+                <button type="button" id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ===== Main Content Area ===== -->
+        <main class="main-content">
+            <header class="main-header">
+                <!-- NEW: Hamburger menu for mobile/tablet -->
+                <button type="button" class="hamburger-btn" id="sidebarToggleBtn" aria-label="Toggle sidebar">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <h2 id="main-header-title">SOP & Templates Management</h2>
+            </header>
+
+            <!-- 1. Main Data View (Table) -->
+            <div id="mainDataView">
+                <!-- UPDATED: Stat cards now have placeholder values, JS will update them -->
+                <section class="stat-cards-container">
+                    <div class="stat-card">
+                        <div class="card-icon bg-sky-100 text-sky-600"><i class="fa-solid fa-file-zipper"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Total Documents</p>
+                            <p class="card-value">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-icon bg-emerald-100 text-emerald-600"><i class="fa-solid fa-file-lines"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">SOPs</p>
+                            <p class="card-value">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="card-icon bg-amber-100 text-amber-600"><i class="fa-solid fa-paste"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Templates</p>
+                            <p class="card-value">0</p>
+                        </div>
+                    </div>
+                     <div class="stat-card">
+                        <div class="card-icon bg-rose-100 text-rose-600"><i class="fa-solid fa-clock"></i></div>
+                        <div class="card-content">
+                            <p class="card-title">Recently Added</p>
+                            <p class="card-value">0</p>
+                        </div>
+                    </div>
+                </section>
+                <div class="table-controls">
+                    <div class="main-actions">
+                        <button type="button" id="addSopBtn" class="btn btn-primary">
+                            <i class="fa-solid fa-plus mr-2"></i> Upload Document
+                        </button>
+                        <!-- NEW: Button for the document generator, required by script.js -->
+                        <button type="button" id="generateDocBtn" class="btn btn-secondary">
+                            <i class="fa-solid fa-wand-magic-sparkles mr-2"></i> Generate Document
+                        </button>
+                    </div>
+                    <div class="filters-and-search">
+                         <div class="filter-group">
+                             <select id="categoryFilter" class="filter-select">
+                                 <option value="">All Categories</option>
+                                 <option value="SOP">SOP</option>
+                                 <option value="Template">Template</option>
+                             </select>
+                         </div>
+                        <div class="search-bar">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="globalSearchInput" placeholder="Search documents...">
+                        </div>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <!-- UPDATED: Added "File Type" column header -->
+                            <tr>
+                                <th>ID</th>
+                                <th>Display Name</th>
+                                <th>Category</th>
+                                <th>File Type</th>
+                                <th>Version</th>
+                                <th>Uploaded On</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sopTableBody"></tbody>
+                    </table>
+                </div>
+                <!-- NEW: Pagination container, required by script.js -->
+                <nav class="pagination-container" aria-label="Table navigation">
+                    <span class="pagination-info" id="paginationInfo"></span>
+                    <ul class="pagination-list" id="paginationList"></ul>
+                </nav>
+            </div>
+
+            <!-- 2. Form for Adding/Editing a Document - Hidden by default -->
+            <div id="sopFormContainer" class="hidden">
+                 <form id="sopForm" class="bg-white p-6 md:p-8 rounded-lg shadow-lg space-y-8 max-w-3xl mx-auto">
+                    <input type="hidden" id="sopId" name="sopId">
+                    <fieldset>
+                        <legend class="form-section-title">Document Details</legend>
+                        <div class="form-grid">
+                            <div class="col-span-2"><label for="fileName" class="form-label required">Display Name</label><input type="text" id="fileName" name="fileName" required placeholder="e.g., Annual Report Template" class="form-input"></div>
+                            <div><label for="category" class="form-label required">Category</label><select id="category" name="category" required class="form-input"><option value="">Select a category</option><option value="SOP">SOP</option><option value="Template">Template</option></select></div>
+                            <div><label for="version" class="form-label">Version</label><input type="text" id="version" name="version" placeholder="e.g., v1.0" class="form-input"></div>
+                            <div class="col-span-2"><label for="fileUpload" class="form-label required">Select File</label><input type="file" id="fileUpload" name="fileUpload" required class="form-input file-input"></div>
+                            <div class="col-span-2"><label for="description" class="form-label">Description</label><textarea id="description" name="description" rows="4" placeholder="Enter a brief description of the document..." class="form-input"></textarea></div>
+                        </div>
+                    </fieldset>
+                    <div class="flex justify-end gap-4 pt-5 border-t border-gray-200">
+                        <button type="button" id="cancelBtn" class="btn btn-secondary">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Document</button>
+                    </div>
+                 </form>
+            </div>
+
+            <!-- 3. NEW: Document Generator View - Hidden by default, required by script.js -->
+            <div id="generateDocView" class="hidden">
+                <div class="generator-controls">
+                    <button type="button" id="backToSopListBtn" class="btn btn-secondary"><i class="fa-solid fa-arrow-left mr-2"></i> Back to List</button>
+                    <div class="generator-actions">
+                        <select id="letterSelect" class="filter-select">
+                            <option value="stipend">Stipend Certificate</option>
+                            <option value="support">Letter of Support</option>
+                        </select>
+                        <button id="printBtn" class="btn btn-primary"><i class="fa-solid fa-print mr-2"></i> Print / Save as PDF</button>
+                    </div>
+                </div>
+
+                <div class="generator-container">
+                    <!-- Left: Form Panel -->
+                    <section class="form-panel">
+                        <p class="text-sm text-gray-500 mb-6">Select a document type, fill the fields, and the preview on the right will update live.</p>
+                        <form id="dataForm" onsubmit="return false;" class="space-y-6">
+    <!-- Common Fields -->
+    <fieldset>
+        <div class="form-grid grid-cols-1">
+            <div><label for="date" class="form-label">Letter Date</label><input id="date" type="text" class="form-input"></div>
+        </div>
+    </fieldset>
+    
+    <div class="border-t border-gray-200"></div>
+
+    <!-- Stipend Certificate Fields -->
+    <div id="stipendFields" class="space-y-6">
+        <h3 class="form-section-title !mb-0 !pb-0 !border-none">Stipend Certificate</h3>
+        <div><label for="name" class="form-label">Recipient Name</label><input id="name" type="text" placeholder="e.g., Ms. Jane Doe" class="form-input"></div>
+        <div><label for="designation" class="form-label">Recipient Designation</label><input id="designation" type="text" placeholder="e.g., Senior Research Associate" class="form-input"></div>
+        <div><label for="school" class="form-label">Recipient School / Institution</label><input id="school" type="text" placeholder="e.g., Jindal School of Government" class="form-input"></div>
+        <div><label for="project" class="form-label">Project Title</label><textarea id="project" class="form-input" rows="3" placeholder="Enter the full project title..."></textarea></div>
+        <fieldset class="border border-gray-200 p-4 rounded-lg"><legend class="text-sm font-medium text-gray-700 px-2">Assistantship Details</legend>
+            <div class="form-grid grid-cols-1 md:grid-cols-3 !gap-4 mt-2">
+                <div><label for="duration" class="form-label">Duration</label><input id="duration" type="text" placeholder="e.g., Nov 10, 2023 - ongoing" class="form-input"></div>
+                <div><label for="position" class="form-label">Position Held</label><input id="position" type="text" placeholder="e.g., Senior Research Associate" class="form-input"></div>
+                <div><label for="stipend" class="form-label">Monthly Stipend</label><input id="stipend" type="text" placeholder="e.g., INR 75000/-" class="form-input"></div>
+            </div>
+        </fieldset>
+        <div><label for="reason" class="form-label">Reason for Letter</label><input id="reason" type="text" placeholder="e.g., visa application with Embassy of Switzerland" class="form-input"></div>
+        <fieldset class="border border-gray-200 p-4 rounded-lg"><legend class="text-sm font-medium text-gray-700 px-2">Signatory Details</legend>
+            <div class="form-grid grid-cols-1 md:grid-cols-2 !gap-4 mt-2">
+                <div><label for="finance_name" class="form-label">Finance Person Name</label><input id="finance_name" type="text" placeholder="e.g., Mr. Nitin Goyal" class="form-input"></div>
+                <div><label for="sig1" class="form-label">Finance Signature Image</label><input id="sig1" type="file" accept="image/*" class="form-input file-input"></div>
+                <div class="col-span-2"><label for="finance_details" class="form-label">Finance Person Details</label><textarea id="finance_details" class="form-input" rows="2" placeholder="e.g., Deputy Manager, Finance Office&#10;O.P. Jindal Global University"></textarea></div>
+                <div class="col-span-2"><label for="sig2" class="form-label">Dean Signature Image</label><input id="sig2" type="file" accept="image/*" class="form-input file-input"></div>
+            </div>
+        </fieldset>
+    </div>
+
+    <!-- Letter of Support Fields -->
+    <div id="supportFields" class="space-y-6">
+        <h3 class="form-section-title !mb-0 !pb-0 !border-none">Letter of Support</h3>
+        <div><label for="support_for" class="form-label">Subject Details [Insert Details]</label><input id="support_for" type="text" placeholder="e.g., a research grant application" class="form-input"></div>
+        <div><label for="support_prof_name" class="form-label">Professor's Name [Prof. Insert Details]</label><input id="support_prof_name" type="text" placeholder="e.g., Prof. Jane Doe" class="form-input"></div>
+        <div><label for="support_para4" class="form-label">Your Elaborate Details (Designation etc.)</label><textarea id="support_para4" class="form-input" rows="3" placeholder="Insert your full title and role..."></textarea></div>
+        <div><label for="support_para5" class="form-label">Collaboration Details</label><textarea id="support_para5" class="form-input" rows="3" placeholder="Describe the collaboration..."></textarea></div>
+        <div><label for="support_contact" class="form-label">Contact Email</label><input id="support_contact" type="text" placeholder="e.g., odr@jgu.edu.in" class="form-input"></div>
+        <div><label for="support_sig" class="form-label">Signature Image (Optional)</label><input id="support_sig" type="file" accept="image/*" class="form-input file-input"></div>
+    </div>
+</form>
+                    </section>
+                    <!-- Right: Preview Panel -->
+                    <section class="preview-panel" id="previewArea" aria-label="Live preview"></section>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- NEW: View Details Modal - Hidden by default, required by script.js -->
+    <div id="viewModal" class="modal-overlay hidden">
+        <div class="modal-content"><div class="modal-header"><h2 class="text-xl font-bold text-gray-800">Document Details: <span class="font-normal" id="modalDocId"></span></h2><button type="button" class="modal-close-btn" aria-label="Close">&times;</button></div><div class="modal-body"><div id="viewDetailsContainer" class="p-6 space-y-4"><dl class="modal-details-grid"></dl></div></div><div class="modal-footer"><button type="button" id="modalCloseFooterBtn" class="btn btn-secondary">Close</button></div></div>
+    </div>
+
+    <!-- UPDATED: Link to your final, functional script file -->
+    <script src="/js/sopsAndTemplates.js"></script>
+</body>
+</html>

@@ -1,0 +1,280 @@
+/* ====================================
+   📌 Dashboard Styles - Full Replacement
+   ==================================== */
+
+/* Import Modern Font */
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap');
+
+/* --- Design System Variables --- */
+:root {
+    --primary-color: #4f46e5;
+    --primary-hover: #4f46e5;
+    --sidebar-bg: #111827;
+    --sidebar-text: #d1d5db;
+    --sidebar-text-active: #ffffff;
+    --main-bg: #f4f7fa;
+    --card-bg: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #6b7280;
+    --border-color: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    --border-radius: 8px;
+    --sidebar-width: 260px;
+    --sidebar-width-collapsed: 80px;
+    --transition-speed: 0.3s;
+}
+
+/* --- Global Reset --- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--main-bg);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow: hidden;
+}
+.dashboard-container { display: flex; height: 100vh; }
+
+/* --- Sidebar --- */
+.sidebar {
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    color: var(--sidebar-text);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem;
+    transition: width var(--transition-speed) ease;
+    flex-shrink: 0;
+}
+.sidebar-header { display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; padding: 0 0.5rem; }
+.logo { width: 40px; height: 40px; }
+.sidebar-title {
+    font-size: 1.25rem; font-weight: 700; color: var(--sidebar-text-active);
+    white-space: nowrap; opacity: 1; transition: opacity var(--transition-speed) ease;
+}
+.sidebar-menu { list-style: none; flex-grow: 1; }
+.sidebar-menu a {
+    display: flex; align-items: center;
+    padding: 0.75rem 1rem; margin-bottom: 0.5rem;
+    text-decoration: none; color: var(--sidebar-text);
+    border-radius: var(--border-radius);
+    transition: background-color var(--transition-speed), color var(--transition-speed);
+    white-space: nowrap;
+}
+.sidebar-menu a:hover { background-color: rgba(255,255,255,0.05); color: var(--sidebar-text-active); }
+.sidebar-menu a.active { background-color: var(--primary-color); color: var(--sidebar-text-active); font-weight: 500; }
+.sidebar-menu a i { font-size: 1.2rem; margin-right: 1rem; width: 20px; text-align: center; }
+.sidebar-footer { padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); }
+.sidebar-toggle {
+    background: none; border: none; color: var(--sidebar-text); font-size: 1.2rem;
+    cursor: pointer; padding: 0.5rem; width: 100%; text-align: left;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: var(--border-radius);
+}
+.sidebar-toggle:hover { background-color: rgba(255,255,255,0.05); }
+
+/* Collapsed Sidebar */
+.dashboard-container.sidebar-collapsed .sidebar-title {
+  display: none; /* hide "Quick Access" */
+}
+
+.dashboard-container.sidebar-collapsed .sidebar-menu span {
+  display: none; /* hide text labels */
+}
+
+.dashboard-container.sidebar-collapsed .sidebar-menu a {
+  justify-content: center; /* center icons */
+}
+
+.dashboard-container.sidebar-collapsed .sidebar-menu a i {
+  margin-right: 0;
+  font-size: 1.4rem; /* make icons clearer */
+}
+/* Collapse Sidebar Width */
+.dashboard-container.sidebar-collapsed .sidebar {
+  width: var(--sidebar-width-collapsed);
+}
+
+
+
+/* --- Main Content --- */
+.main-content { flex-grow: 1; display: flex; flex-direction: column; height: 100vh; position: relative; }
+
+/* Header */
+.main-header {
+    display: flex; justify-content: flex-end; align-items: center;
+    padding: 1.25rem 2rem; background-color: var(--card-bg);
+    border-bottom: 1px solid var(--border-color); flex-shrink: 0;
+}
+
+/* Profile */
+.profile-section { display: flex; align-items: center; gap: 1.5rem; position: relative; }
+.notification-bell { font-size: 1.2rem; color: var(--text-secondary); cursor: pointer; position: relative; }
+.notification-dot {
+    position: absolute; top: 0; right: 0; width: 8px; height: 8px;
+    background-color: #ef4444; border-radius: 50%; border: 1px solid var(--card-bg);
+}
+.profile-details { display: flex; align-items: center; gap: 0.75rem; cursor: pointer; }
+.profile-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background-color: var(--primary-color); color: white;
+    display: flex; justify-content: center; align-items: center;
+    font-weight: bold; font-size: 1.1rem;
+}
+.username { font-weight: 500; }
+.profile-details i { color: var(--text-secondary); transition: transform var(--transition-speed); }
+.profile-details.open i { transform: rotate(180deg); }
+.profile-dropdown {
+    display: none; position: absolute; top: calc(100% + 10px); right: 0;
+    background-color: var(--card-bg); border-radius: var(--border-radius);
+    box-shadow: var(--shadow-md); width: 200px; overflow: hidden; z-index: 1000;
+}
+.profile-dropdown.show { display: block; }
+.profile-dropdown a {
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem;
+    text-decoration: none; color: var(--text-primary);
+    transition: background-color var(--transition-speed);
+}
+.profile-dropdown a:hover { background-color: var(--main-bg); }
+.dropdown-divider { height: 1px; background-color: var(--border-color); margin: 0.5rem 0; }
+.logout-link { color: #ef4444 !important; }
+
+/* Content */
+.content-wrapper { padding: 2rem; flex-grow: 1; overflow-y: auto; }
+.welcome-banner {
+    background: linear-gradient(135deg, #60a5fa, #4f46e5); color: white;
+    padding: 0.5rem 1.5rem; border-radius: var(--border-radius);
+    margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;
+}
+.banner-text h2 { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
+.banner-illustration { width: 120px; height: auto; opacity: 0.8; }
+.section-title { font-size: 1.25rem; margin-bottom: 1rem; color: var(--text-primary); }
+.quick-access-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+.card {
+    background-color: var(--card-bg); padding: 1.5rem; border-radius: var(--border-radius);
+    box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
+    transition: transform var(--transition-speed), box-shadow var(--transition-speed), border-color var(--transition-speed);
+    text-decoration: none; color: inherit; display: flex; flex-direction: column; align-items: flex-start;
+}
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary-color);
+}
+.card-icon {
+    font-size: 1.75rem; margin-bottom: 1rem; color: var(--primary-color);
+    background-color: #dbeafe; padding: 0.8rem; border-radius: 50%;
+    display: inline-flex; justify-content: center; align-items: center;
+    width: 50px; height: 50px;
+}
+.card h3 { font-size: 1.1rem; margin-bottom: 0.5rem; color: var(--text-primary); }
+.card p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* Footer */
+.main-footer {
+    padding: 0.5rem 0.5rem;
+    text-align: center; font-size: 0.65rem;
+    color: var(--text-secondary);
+    border-top: 0.8px solid var(--border-color);
+    flex-shrink: 0;
+}
+.main-footer a { color: var(--primary-color); text-decoration: none; font-weight: 500; }
+
+/* Floating Chatbot Button */
+.chatbot-fab {
+    position: absolute; bottom: 2rem; right: 2rem;
+    width: 60px; height: 60px;
+    background-color: var(--primary-color); color: white;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 1.75rem; box-shadow: var(--shadow-md); text-decoration: none;
+    z-index: 1000; transition: all var(--transition-speed) ease;
+}
+.chatbot-fab:hover {
+    background-color: var(--primary-hover);
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+.fab-tooltip {
+    position: absolute; right: 120%; top: 50%; transform: translateY(-50%);
+    background-color: var(--sidebar-bg); color: white;
+    padding: 0.5rem 1rem; border-radius: var(--border-radius);
+    white-space: nowrap; font-size: 0.9rem; font-weight: 500;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity var(--transition-speed) ease, visibility var(--transition-speed) ease;
+}
+.chatbot-fab:hover .fab-tooltip { opacity: 1; visibility: visible; }
+
+/* --- Responsive --- */
+@media (max-width: 768px) {
+    body { overflow: auto; }
+    .dashboard-container { flex-direction: column; height: auto; }
+    .main-content { height: auto; }
+    .sidebar { width: 100% !important; height: auto; }
+    .welcome-banner { flex-direction: column; text-align: center; gap: 1.5rem; }
+    .chatbot-fab { bottom: 1.5rem; right: 1.5rem; }
+    .fab-tooltip { display: none; }
+}
+
+/* ================================
+   🚀 Interactive Add-ons
+   ================================ */
+
+/* 1. Dark Mode */
+body.dark-mode {
+    --main-bg: #1f2937;
+    --card-bg: #374151;
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --border-color: #4b5563;
+    --sidebar-bg: #0f172a;
+    --sidebar-text: #9ca3af;
+    --sidebar-text-active: #ffffff;
+}
+body.dark-mode .welcome-banner { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+body.dark-mode .card:hover { border-color: var(--primary-hover); }
+
+/* 2. Dropdown Animation */
+.profile-dropdown {
+    opacity: 0; transform: translateY(-10px);
+    transition: opacity var(--transition-speed) ease, transform var(--transition-speed) ease;
+}
+.profile-dropdown.show { opacity: 1; transform: translateY(0); }
+
+/* 3. Notification Bell Jiggle */
+@keyframes bell-shake {
+    0% { transform: rotate(0); }
+    25% { transform: rotate(-15deg); }
+    50% { transform: rotate(15deg); }
+    75% { transform: rotate(-10deg); }
+    100% { transform: rotate(0); }
+}
+.notification-bell.shake { animation: bell-shake 0.6s ease; }
+
+/* 4. Sidebar Tooltip (Collapsed Mode) */
+.sidebar-menu a .tooltip {
+    position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+    margin-left: 10px; background-color: var(--sidebar-bg); color: var(--sidebar-text-active);
+    padding: 0.4rem 0.7rem; border-radius: var(--border-radius); font-size: 0.8rem;
+    white-space: nowrap; opacity: 0; pointer-events: none;
+    transition: opacity var(--transition-speed) ease;
+}
+.dashboard-container.sidebar-collapsed .sidebar-menu a:hover .tooltip { opacity: 1; }
+
+/* 5. Hover Glow */
+button, .card, .sidebar-toggle {
+    transition: box-shadow var(--transition-speed), transform var(--transition-speed);
+}
+button:hover, .sidebar-toggle:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transform: translateY(-2px);
+}
+
+/* 6. Card Pop Effect */
+.card:hover .card-icon {
+    background-color: var(--primary-color);
+    color: #fff;
+    transform: scale(1.1);
+    transition: all var(--transition-speed) ease;
+}

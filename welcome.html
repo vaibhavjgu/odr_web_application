@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Research Management Dashboard</title>
+
+    <!-- Google Fonts & Font Awesome -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Link to CSS -->
+    <link rel="stylesheet" href="/css/welcome.css">
+</head>
+
+<body>
+    <div class="dashboard-container" id="dashboard-container">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <img src="/css/UniversityLogo.png" alt="University Logo" class="logo">
+                <h2 class="sidebar-title">Quick Access</h2>
+            </div>
+            <ul class="sidebar-menu">
+                <li><a href="#" class="active"><i class="fas fa-tachometer-alt fa-fw"></i> <span>Dashboard</span></a></li>
+                <li><a href="externalGrant.html"><i class="fas fa-globe fa-fw"></i> <span>External Grants</span></a></li>
+                <li><a href="internalGrant.html"><i class="fas fa-coins fa-fw"></i> <span>Internal Grants</span></a></li>
+                <li><a href="inventory.html"><i class="fas fa-boxes-stacked fa-fw"></i> <span>Inventory</span></a></li>
+                <li><a href="sopsandTemplates.html"><i class="fas fa-file-alt fa-fw"></i> <span>SOP & Templates</span></a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="sidebar-toggle" title="Toggle Sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <header class="main-header">
+                <div class="profile-section">
+                    <div class="notification-bell" title="Notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-dot"></span>
+                    </div>
+
+                    <!-- Profile & Dropdown -->
+                    <div class="profile-details">
+                        <div class="profile-avatar" id="profile-avatar-initial">P</div>
+                        <span class="username" id="username-display">Profile Name</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+
+                    <div class="profile-dropdown" id="profile-dropdown">
+                        <a href="#"><i class="fas fa-user-circle"></i> My Profile</a>
+                        <a href="#"><i class="fas fa-cog"></i> Settings</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content-wrapper">
+                <div class="welcome-banner">
+                    <div class="banner-text">
+                        <h2>Welcome, ODR <span id="welcome-name-display"></span>!</h2>
+                        <p>Here's a quick overview of your research management activities.</p>
+                    </div>
+                    <img src="/css/UniversityLogo.png" alt="Research Illustration" class="banner-illustration">
+                </div>
+
+                <h3 class="section-title">ODR Dashboard</h3>
+                <div class="quick-access-grid">
+                    <a href="internalGrant.html" class="card">
+                        <i class="fas fa-coins card-icon"></i>
+                        <h3>Internal Grants</h3>
+                        <p>Manage internal grant profiles, disbursement, and expenses.</p>
+                    </a>
+                    <a href="externalGrant.html" class="card">
+                        <i class="fas fa-globe card-icon"></i>
+                        <h3>External Grants</h3>
+                        <p>Track externally funded projects, disbursements, and applications.</p>
+                    </a>
+                    <a href="inventory.html" class="card">
+                        <i class="fas fa-boxes-stacked card-icon"></i>
+                        <h3>Inventory</h3>
+                        <p>Monitor lab equipment, research tools, and materials.</p>
+                    </a>
+                    <a href="sopsAndTemplates.html" class="card">
+                        <i class="fas fa-file-alt card-icon"></i>
+                        <h3>SOP & Templates</h3>
+                        <p>Upload and manage SOP and Template related documents.</p>
+                    </a>
+                </div>
+            </div>
+
+            <footer class="main-footer">
+                <p>&copy; 2025 Research Management System. All Rights Reserved. | <a href="#">Terms & Conditions</a></p>
+            </footer>
+
+            <a href="/chat" class="chatbot-fab" aria-label="Open Chatbot">
+                <i class="fas fa-comments"></i>
+                <span class="fab-tooltip">Chat with AI Assistant</span>
+            </a>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="/js/welcome.js"></script>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Office of the Dean of Research</title>
+    <!-- Link to the new CSS -->
+    <link rel="stylesheet" href="/css/login.css?v=1.2"> 
+    <!-- Link to Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Add Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2 class="subtitle">Welcome to the</h2>
+            <h1 class="title">Office of the Dean of Research</h1>
+            
+            <form id="loginForm"> 
+                <!-- Email input with icon -->
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" name="username" class="form-control" id="emailInput" placeholder="Email" required>
+                </div>
+
+                <!-- Password input with icon and toggle -->
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" name="password" class="form-control" id="passwordInput" placeholder="Password" required>
+                    <i class="fas fa-eye-slash" id="togglePassword"></i>
+                </div>
+
+                <!-- Submit button -->
+                <button type="submit" class="btn btn-primary">Login</button>
+                
+                <!-- Forgot Password Link -->
+                <div class="extra-links">
+                    <a href="/forgot-password.html" class="forgot-password">Forgot Password?</a>
+                </div>
+
+                <!-- Element to display login errors -->
+                <p id="loginError" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // --- Password Toggle Functionality ---
+        const togglePassword = document.querySelector('#togglePassword');
+        const passwordInput = document.querySelector('#passwordInput');
+
+        togglePassword.addEventListener('click', function (e) {
+            // toggle the type attribute
+            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passwordInput.setAttribute('type', type);
+            // toggle the icon
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
+        });
+
+        // --- Existing Login Form Submission Logic ---
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault(); 
+
+            const emailInput = document.getElementById('emailInput');
+            const passwordInput = document.getElementById('passwordInput');
+            const loginError = document.getElementById('loginError');
+            
+            loginError.textContent = '';
+
+            const username = emailInput.value;
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                loginError.textContent = 'Email and password are required.';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/login', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: username, password: password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.accessToken) {
+                        localStorage.setItem('accessToken', data.accessToken); 
+                        if (data.username) {
+                            localStorage.setItem('username', data.username);
+                        }
+                        window.location.href = '/welcome.html';
+                    } else {
+                        loginError.textContent = 'Login successful, but no token received.';
+                    }
+                } else {
+                    let errorMessage = 'Login failed. Please check your credentials.';
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.message || errorMessage;
+                    } catch (e) {
+                        errorMessage = `Login failed (${response.status}). Please try again.`;
+                    }
+                    loginError.textContent = errorMessage;
+                }
+            } catch (error) {
+                loginError.textContent = 'An error occurred. Please check your network connection.';
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -11,10 +11,10 @@ const PORT = process.env.PORT || 3000; // Use environment variable for port
 const JWT_SECRET = process.env.JWT_SECRET || 'YOUR_VERY_STRONG_JWT_SECRET_KEY_HERE';
 
 // --- ROUTERS ---
-const externalGrantRoutes = require('./routes/externalGrantRoutes'); 
-const internalGrantRoutes = require('./routes/internalGrantRoutes');
-const inventoryRoutes = require('./routes/inventoryRoutes'); 
-const sopTemplateRoutes = require('./routes/sopsAndTemplatesRoute');
+const externalGrantRoutes = require('./routes/externalGrantRoutes.js'); 
+const internalGrantRoutes = require('./routes/internalGrantRoutes.js');
+const inventoryRoutes = require('./routes/inventoryRoutes.js'); 
+const sopTemplateRoutes = require('./routes/sopsAndTemplatesRoute.js');
 
 // --- INITIALIZE APP ---
 const app = express();

@@ -12,7 +12,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- The new, unified application stylesheet -->
-    <link rel="stylesheet" href="public/css/style.css">
+    <link rel="stylesheet" href="css/style.css">
     
     <!-- SheetJS Library for Excel Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -29,7 +29,7 @@
         <aside class="sidebar">
             <div class="sidebar-header">
                 <div class="sidebar-branding">
-                    <img src="public\css\Jindal Logo.png" alt="University Logo" class="sidebar-logo"> 
+                    <img src="css\Jindal Logo.png" alt="University Logo" class="sidebar-logo"> 
                     <h1 class="sidebar-title">Quick Access</h1>
                 </div>
                 <!-- Button to collapse the sidebar on desktop -->
@@ -57,15 +57,16 @@
                 </a>
                 <a href="sopsAndTemplates.html" class="nav-item"> <!-- Update with your SOP page link when ready -->
                     <i class="fa-solid fa-file-lines"></i>
-                    <span class="nav-text">SOP and Template</span>
+                    <span class="nav-text">SOP & Templates</span>
                 </a>
             </nav>
             <!-- END OF BLOCK TO PASTE -->
             <div class="sidebar-footer">
                 <div class="profile-section">
-                    <img src="https://placehold.co/36x36/e2e8f0/475569?text=U" alt="User Avatar" class="profile-avatar">
+                    <div class="profile-avatar"></div>
                     <span class="username">User</span>
                 </div>
+                <!-- UPDATED: Logout button now uses an ID for the script -->
                 <button type="button" id="logoutBtn" class="logout-btn" title="Logout" aria-label="Logout">
                     <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
@@ -129,7 +130,7 @@
                     <div class="filters-and-search">
                          <div class="filter-group">
                              <select id="statusFilter" class="filter-select">
-                                 <option value="">All Statuses</option>
+                                 <option value="">All Status</option>
                                  <option value="In Stock">In Stock</option>
                                  <option value="Assigned">Assigned</option>
                                  <option value="Under Maintenance">Under Maintenance</option>
@@ -219,6 +220,6 @@
         </div>
     </div>
 
-    <script src="public/js/inventory.js"></script>
+    <script src="js/inventory.js"></script>
 </body>
 </html>

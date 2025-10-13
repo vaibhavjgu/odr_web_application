@@ -37,215 +37,406 @@ function getUploadedFileKeysArray(reqFiles, fieldName, expectedCount) {
 
 // === CREATE GRANT ===
  
+// router.post('/', upload.fields(grantUploadFields), async (req, res) => {
+//     console.log("\n--- SERVER POST: START Create New Grant ---");
+//     if (!req.body.grantDetails) {
+//         console.error("SERVER POST: 'grantDetails' is missing.");
+//         return res.status(400).json({ message: "grantDetails is missing in the request body." });
+//     }
+
+//     let grantDetails;
+//     try {
+//         grantDetails = JSON.parse(req.body.grantDetails);
+//         console.log("SERVER POST: Parsed req.body.grantDetails successfully.");
+//     } catch (e) {
+//         console.error("SERVER POST: Invalid JSON in 'grantDetails'.", e);
+//         return res.status(400).json({ message: "Invalid JSON in grantDetails." });
+//     }
+
+//     const filesUploadedByMulter = req.files || {};
+//     const mainApplicationId = grantDetails.coreInfo?.application_id;
+//     if (!mainApplicationId) {
+//         console.error("SERVER POST: Application ID is missing from coreInfo.");
+//         return res.status(400).json({ message: "Application ID is required." });
+//     }
+//     console.log(`SERVER POST: Main Application ID: ${mainApplicationId}`);
+
+//     const connection = await pool.getConnection();
+//     console.log("SERVER POST: Database connection acquired.");
+
+//     try {
+//         await connection.beginTransaction();
+//         console.log("SERVER POST: Transaction started.");
+
+//         // --- Step 1: Upload ALL files to S3 and store their keys on the file objects ---
+//         // CORRECTED LOOP: Use Object.keys() for safe iteration.
+//         const fieldNames = Object.keys(filesUploadedByMulter);
+//         for (const fieldName of fieldNames) {
+//             const fileArrayFromMulter = filesUploadedByMulter[fieldName];
+//             for (let i = 0; i < fileArrayFromMulter.length; i++) {
+//                 const fileObj = fileArrayFromMulter[i];
+//                  const s3Info = await uploadToS3(fileObj, mainApplicationId, `${fieldName}_item${i}`);
+//                 fileObj.s3Info = s3Info;
+//             }
+//         }
+        
+//         // --- Step 2: Insert data into database tables ---
+//         // Your existing database insertion logic is correct and preserved below.
+
+//         // Section 1: `projects` table
+//         console.log("SERVER POST: Inserting into 'projects' table.");
+//         const core = grantDetails.coreInfo || {};
+
+//         const agreementFileObjects = filesUploadedByMulter['s1_project_agreement_file'] || [];
+//         const agreementS3Info = agreementFileObjects.map(file => file.s3Info);
+//         const agreementS3Json = JSON.stringify(agreementS3Info);
+
+
+//         await connection.query(
+//             `INSERT INTO projects (application_id , grant_category ,project_id_odr, project_title, project_id_funder, department_name, type_of_grant, funder_type, fcra_type, project_website_link, project_agreement_files) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//             [mainApplicationId, 'EXTERNAL',core.project_id_odr, core.project_title, core.project_id_funder, core.department_name, core.type_of_grant, core.funder_type, core.fcra_type, core.project_website_link, agreementS3KeysJson]
+//         );
+
+//   // Section 2: `project_dates_status` table
+// console.log("SERVER POST: Inserting into 'project_dates_status' table.");
+// const ds = grantDetails.datesStatus || {};
+
+// const appDocFiles = filesUploadedByMulter['s2_application_document_file'] || [];
+// const appDocS3KeysJson = JSON.stringify(appDocFiles.map(file => file.s3Key));
+
+// await connection.query(
+//     `INSERT INTO project_dates_status (application_id, academic_year, application_date, application_status, calendar_year, financial_closing_status, financial_year, project_duration, project_end_date, project_secured_date, project_start_date, project_status, application_document_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//     [mainApplicationId, ds.academic_year, ds.application_date, ds.application_status, ds.calendar_year, ds.financial_closing_status, ds.financial_year, ds.project_duration, ds.project_end_date, ds.project_secured_date, ds.project_start_date, ds.project_status, appDocS3KeysJson] // Passing the JSON here
+// );
+
+//         // Section 3: `funding_collaboration` table (1:N)
+//         if (grantDetails.fundingCollaborations && grantDetails.fundingCollaborations.length > 0) {
+//             for (const item of grantDetails.fundingCollaborations) {
+//                 await connection.query(`INSERT INTO funding_collaboration (application_id, funding_agencies_name, collaboration_name, collaboration_country_of_origin, collaboration_contact_details) VALUES (?, ?, ?, ?, ?)`, [mainApplicationId, item.funding_agencies_name, item.collaboration_name, item.collaboration_country_of_origin, item.collaboration_contact_details]);
+//             }
+//         }
+        
+
+
+
+// // Section 4: `principal_investigators` table (1:N with file)
+// if (grantDetails.principalInvestigators && grantDetails.principalInvestigators.length > 0) {
+//     const allPiPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's4_pi_photographs');
+//     let fileCursor = 0; // Use a cursor to track our position in the flat file array
+
+//     for (const pi of grantDetails.principalInvestigators) {
+//         const newFileCount = pi.newFileCount || 0;
+//         const filesForThisPi = allPiPhotoS3Keys.slice(fileCursor, fileCursor + newFileCount);
+//         fileCursor += newFileCount; // Move the cursor forward
+
+//         const piPhotoKeyJson = JSON.stringify(filesForThisPi); // Store as a JSON array
+        
+//         await connection.query(
+//             `INSERT INTO principal_investigators (application_id, name_of_pi, pi_contact_details, pi_affiliating_institution, pi_affiliating_country, pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+//             [mainApplicationId, pi.name_of_pi, pi.pi_contact_details, pi.pi_affiliating_institution, pi.pi_affiliating_country, piPhotoKeyJson]
+//         );
+//     }
+// }
+
+// // Section 5: `co_investigators` table (1:N with file)
+// if (grantDetails.coInvestigators && grantDetails.coInvestigators.length > 0) {
+//     const allCoPiPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's5_co_pi_photographs');
+//     let fileCursor = 0;
+
+//     for (const coPi of grantDetails.coInvestigators) {
+//         const newFileCount = coPi.newFileCount || 0;
+//         const filesForThisCoPi = allCoPiPhotoS3Keys.slice(fileCursor, fileCursor + newFileCount);
+//         fileCursor += newFileCount;
+
+//         const coPiPhotoKeyJson = JSON.stringify(filesForThisCoPi); // Store as a JSON array
+        
+//         await connection.query(
+//             `INSERT INTO co_investigators (application_id, name_of_co_pi, co_pi_contact_details, co_pi_affiliating_institution, co_pi_affiliating_country, co_pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+//             [mainApplicationId, coPi.name_of_co_pi, coPi.co_pi_contact_details, coPi.co_pi_affiliating_institution, coPi.co_pi_affiliating_country, coPiPhotoKeyJson]
+//         );
+//     }
+// }
+
+
+//         // Section 6: `grant_info` table
+//         const gi = grantDetails.amountsOverheads || {};
+
+//         const financialDocFiles = filesUploadedByMulter['s6_financial_documents_file'] || [];
+//         const financialDocS3KeysJson = JSON.stringify(financialDocFiles.map(file => file.s3Key));
+
+//         let remainingAmount = gi.grant_amount_in_inr;
+//         if (typeof gi.remaining_amount_inr === 'number') { remainingAmount = gi.remaining_amount_inr; }
+//         await connection.query(`INSERT INTO grant_info (application_id, grant_sanctioned_amount, currency, exchange_rate, grant_amount_in_inr, amount_in_usd, overheads_percentage, overheads_secured, overheads_received, gst_applicable, financial_documents_s3_key, remaining_amount_inr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [mainApplicationId, gi.grant_sanctioned_amount_original_currency, gi.currency_code, gi.exchange_rate_to_inr, gi.grant_amount_in_inr, gi.amount_in_usd_equivalent, gi.overheads_percentage, gi.overheads_secured_inr, gi.overheads_received_inr, gi.gst_applicable, financialDocS3KeysJson, remainingAmount]);
+
+        
+
+
+    
+        
+// // Section 7: `funds_received` table
+// if (grantDetails.fundInstallments && grantDetails.fundInstallments.length > 0) {
+//     const allInstallmentDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's7_fund_received_documents');
+//     let fileCursor = 0;
+
+//     for (const inst of grantDetails.fundInstallments) {
+//         const newFileCount = inst.newFileCount || 0;
+//         const filesForThisInstallment = allInstallmentDocS3Keys.slice(fileCursor, fileCursor + newFileCount);
+//         fileCursor += newFileCount;
+
+//         const installmentDocKeyJson = JSON.stringify(filesForThisInstallment);
+        
+//         // --- CORRECTED QUERY: Removed the 'amount_received_inr' column and its value ---
+//         await connection.query(
+//             `INSERT INTO funds_received (application_id, fy_year, installment_amount_inr, bank_fee_inr, installment_date, fund_received_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+//             [mainApplicationId, inst.fy_year_installment, inst.installment_amount_inr, inst.bank_fee_inr, inst.installment_date, installmentDocKeyJson]
+//         );
+//     }
+// }
+
+
+//         // Section 8: `budget_head` table
+//         if (grantDetails.budgetHeads && grantDetails.budgetHeads.length > 0) {
+//             for (const bh of grantDetails.budgetHeads) {
+//                 await connection.query(`INSERT INTO budget_head (application_id, budget_head, budget_percentage, budget_value, actual_expense, balance_fund) VALUES (?, ?, ?, ?, ?, ?)`, [mainApplicationId, bh.budget_head_name, bh.budget_percentage, bh.budget_head_value_inr, bh.actual_expense_inr, bh.balance_fund_inr]);
+//             }
+//         }
+
+
+    
+
+
+// // Section 9: `project_deliverables` table
+// if (grantDetails.projectDeliverables && grantDetails.projectDeliverables.length > 0) {
+//     const allDeliverableDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's9_deliverable_documents');
+//     let fileCursor = 0; // Use a cursor to track our position in the flat file array
+
+//     for (const del of grantDetails.projectDeliverables) {
+//         // Use the count from the payload to slice the correct number of new files
+//         const newFileCount = del.newFileCount || 0;
+//         const filesForThisDeliverable = allDeliverableDocS3Keys.slice(fileCursor, fileCursor + newFileCount);
+//         fileCursor += newFileCount; // Move the cursor forward
+
+//         const deliverableDocKeyJson = JSON.stringify(filesForThisDeliverable);
+        
+//         await connection.query(
+//             `INSERT INTO project_deliverables (application_id, deliverable_type, deliverable_status, deliverable_start_date, deliverable_due_date, deliverable_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+//             // Note: deliverable_start_date is not in your form, so we'll pass null.
+//             [mainApplicationId, del.deliverable_description, del.deliverable_status, null, del.deliverable_due_date, deliverableDocKeyJson]
+//         );
+//     }
+// }
+        
+        
+
+
+
+// // Section 10: `project_staff` table
+// if (grantDetails.projectStaff && grantDetails.projectStaff.length > 0) {
+//     const allStaffPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_photographs');
+//     const allStaffAgreementS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_agreements');
+//     let photoCursor = 0;
+//     let agreementCursor = 0;
+
+//     for (const staff of grantDetails.projectStaff) {
+//         // Slice photos based on the count for this staff member
+//         const newPhotoCount = staff.newPhotoCount || 0;
+//         const photosForThisStaff = allStaffPhotoS3Keys.slice(photoCursor, photoCursor + newPhotoCount);
+//         photoCursor += newPhotoCount;
+
+//         // Slice agreements based on the count for this staff member
+//         const newAgreementCount = staff.newAgreementCount || 0;
+//         const agreementsForThisStaff = allStaffAgreementS3Keys.slice(agreementCursor, agreementCursor + newAgreementCount);
+//         agreementCursor += newAgreementCount;
+
+//         const photoKeyJson = JSON.stringify(photosForThisStaff);
+//         const agreementKeyJson = JSON.stringify(agreementsForThisStaff);
+        
+//         await connection.query(
+//             `INSERT INTO project_staff (application_id, staff_name, staff_role, staff_stipend_rate, staff_months_paid, staff_total_stipend, staff_per_diem, staff_joining_date, staff_end_date, staff_status, staff_photograph_s3_key, staff_agreement_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+//             [mainApplicationId, staff.staff_name, staff.staff_role, staff.staff_stipend_rate_inr, staff.staff_months_stipend_paid, staff.staff_total_stipend_paid_inr, staff.staff_per_diem_paid_inr, staff.staff_joining_date, staff.staff_end_date, staff.staff_status || 'active', photoKeyJson, agreementKeyJson]
+//         );
+//     }
+// }
+
+
+// // Section 11: `project_equipments` table
+// if (grantDetails.projectEquipments && grantDetails.projectEquipments.length > 0) {
+//     const allEquipmentBillS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's11_equipment_bills_files');
+//     let fileCursor = 0; // Use the correct cursor pattern
+
+//     for (const equip of grantDetails.projectEquipments) {
+//         // Assume frontend sends 'newFileCount' for each equipment item
+//         const newFileCount = equip.newFileCount || 0; 
+//         const filesForThisEquipment = allEquipmentBillS3Keys.slice(fileCursor, fileCursor + newFileCount);
+//         fileCursor += newFileCount; // Move cursor forward
+
+//         const equipmentBillKeyJson = JSON.stringify(filesForThisEquipment);
+        
+//         await connection.query(
+//             `INSERT INTO project_equipments (application_id, name_of_equipment, quantity_of_equipment, cost_per_unit, total_cost, equipment_bills_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+//             [mainApplicationId, equip.equipment_name_description, equip.quantity_of_equipment, equip.cost_per_unit_inr, equip.total_cost_equipments_inr, equipmentBillKeyJson]
+//         );
+//     }
+// }
+        
+//         // Section 12: `project_files` table
+//         const finalReportFiles = filesUploadedByMulter['s12_final_report_file'] || [];
+//         const finalReportS3KeysJson = JSON.stringify(finalReportFiles.map(file => file.s3Key));
+
+//         const projectImageFiles = filesUploadedByMulter['s12_project_image_file'] || [];
+//         const projectImageS3KeysJson = JSON.stringify(projectImageFiles.map(file => file.s3Key));
+
+//         const overallDocFiles = filesUploadedByMulter['s7_fund_received_document_overall'] || [];
+//         const overallDocS3KeysJson = JSON.stringify(overallDocFiles.map(file => file.s3Key));
+
+//         await connection.query(`INSERT INTO project_files (application_id, final_report_document_s3_key, project_image_s3_key, overall_s7_doc_s3_key) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE final_report_document_s3_key = VALUES(final_report_document_s3_key), project_image_s3_key = VALUES(project_image_s3_key), overall_s7_doc_s3_key = VALUES(overall_s7_doc_s3_key)`, [mainApplicationId, finalReportS3KeysJson, projectImageS3KeysJson, overallDocS3KeysJson]);
+
+//         await connection.commit();
+//         console.log("SERVER POST: Transaction committed successfully.");
+//         res.status(201).json({ message: 'External grant created successfully', projectId: mainApplicationId });
+
+//     } catch (error) {
+//         if (connection) {
+//             await connection.rollback();
+//             console.log("SERVER POST: Transaction rolled back due to error.");
+//         }
+//         console.error('SERVER POST: Error creating external grant:', error);
+        
+//         // S3 file cleanup on failure
+//         // CORRECTED LOOP for the catch block
+//         const fieldNames = Object.keys(filesUploadedByMulter);
+//         for (const fieldName of fieldNames) {
+//             const fileArray = filesUploadedByMulter[fieldName];
+//             for (const fileObj of fileArray) {
+//                 if (fileObj.s3Key) {
+//                     console.log(`SERVER POST (Rollback Cleanup): Deleting S3 object: ${fileObj.s3Key}`);
+//                     await deleteFromS3(fileObj.s3Key);
+//                 }
+//             }
+//         }
+        
+//         res.status(500).json({ message: 'Failed to create external grant', error: error.message });
+//     } finally {
+//         if (connection) {
+//             connection.release();
+//             console.log("SERVER POST: Database connection released.");
+//         }
+//         console.log(`--- SERVER POST: END Create New Grant for ${mainApplicationId} ---`);
+//     }
+// });
+
+
+// In routes/externalGrantRoutes.js
+
+// === CREATE GRANT (Corrected for Original Filenames) ===
 router.post('/', upload.fields(grantUploadFields), async (req, res) => {
     console.log("\n--- SERVER POST: START Create New Grant ---");
     if (!req.body.grantDetails) {
-        console.error("SERVER POST: 'grantDetails' is missing.");
         return res.status(400).json({ message: "grantDetails is missing in the request body." });
     }
 
     let grantDetails;
     try {
         grantDetails = JSON.parse(req.body.grantDetails);
-        console.log("SERVER POST: Parsed req.body.grantDetails successfully.");
     } catch (e) {
-        console.error("SERVER POST: Invalid JSON in 'grantDetails'.", e);
         return res.status(400).json({ message: "Invalid JSON in grantDetails." });
     }
 
     const filesUploadedByMulter = req.files || {};
     const mainApplicationId = grantDetails.coreInfo?.application_id;
     if (!mainApplicationId) {
-        console.error("SERVER POST: Application ID is missing from coreInfo.");
         return res.status(400).json({ message: "Application ID is required." });
     }
-    console.log(`SERVER POST: Main Application ID: ${mainApplicationId}`);
 
     const connection = await pool.getConnection();
-    console.log("SERVER POST: Database connection acquired.");
+    const newlyUploadedS3KeysForRollback = [];
 
     try {
         await connection.beginTransaction();
         console.log("SERVER POST: Transaction started.");
 
-        // --- Step 1: Upload ALL files to S3 and store their keys on the file objects ---
-        // CORRECTED LOOP: Use Object.keys() for safe iteration.
-        const fieldNames = Object.keys(filesUploadedByMulter);
-        for (const fieldName of fieldNames) {
-            const fileArrayFromMulter = filesUploadedByMulter[fieldName];
-            for (let i = 0; i < fileArrayFromMulter.length; i++) {
-                const fileObj = fileArrayFromMulter[i];
-                fileObj.s3Key = await uploadToS3(fileObj, mainApplicationId, `${fieldName}_item${i}`);
+        // --- Step 1: Upload ALL files to S3 and store the {key, name} object ---
+        for (const fieldName in filesUploadedByMulter) {
+            for (const fileObj of filesUploadedByMulter[fieldName]) {
+                const s3Info = await uploadToS3(fileObj, mainApplicationId, fieldName);
+                fileObj.s3Info = s3Info; // Attach the {key, name} object
+                if (s3Info && s3Info.key) {
+                    newlyUploadedS3KeysForRollback.push(s3Info.key);
+                }
             }
         }
         
+        // Helper to get an array of {key, name} objects for a given field
+        const getS3InfoArray = (fieldName) => (filesUploadedByMulter[fieldName] || []).map(file => file.s3Info);
+        
         // --- Step 2: Insert data into database tables ---
-        // Your existing database insertion logic is correct and preserved below.
 
         // Section 1: `projects` table
-        console.log("SERVER POST: Inserting into 'projects' table.");
         const core = grantDetails.coreInfo || {};
-
-        const agreementFileObjects = filesUploadedByMulter['s1_project_agreement_file'] || [];
-        const agreementS3Keys = agreementFileObjects.map(file => file.s3Key);
-
-        const agreementS3KeysJson = JSON.stringify(agreementS3Keys);
-
-
+        const agreementS3Json = JSON.stringify(getS3InfoArray('s1_project_agreement_file'));
         await connection.query(
-            `INSERT INTO projects (application_id , grant_category ,project_id_odr, project_title, project_id_funder, department_name, type_of_grant, funder_type, fcra_type, project_website_link, project_agreement_files) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [mainApplicationId, 'EXTERNAL',core.project_id_odr, core.project_title, core.project_id_funder, core.department_name, core.type_of_grant, core.funder_type, core.fcra_type, core.project_website_link, agreementS3KeysJson]
+            `INSERT INTO projects (application_id, grant_category, project_id_odr, project_title, project_id_funder, department_name, type_of_grant, funder_type, fcra_type, project_website_link, project_agreement_files) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [mainApplicationId, 'EXTERNAL', core.project_id_odr, core.project_title, core.project_id_funder, core.department_name, core.type_of_grant, core.funder_type, core.fcra_type, core.project_website_link, agreementS3Json]
         );
 
-  // Section 2: `project_dates_status` table
-console.log("SERVER POST: Inserting into 'project_dates_status' table.");
-const ds = grantDetails.datesStatus || {};
+        // Section 2: `project_dates_status` table
+        const ds = grantDetails.datesStatus || {};
+        const appDocS3Json = JSON.stringify(getS3InfoArray('s2_application_document_file'));
+        await connection.query(
+            `INSERT INTO project_dates_status (application_id, academic_year, application_date, application_status, calendar_year, financial_closing_status, financial_year, project_duration, project_end_date, project_secured_date, project_start_date, project_status, application_document_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [mainApplicationId, ds.academic_year, ds.application_date, ds.application_status, ds.calendar_year, ds.financial_closing_status, ds.financial_year, ds.project_duration, ds.project_end_date, ds.project_secured_date, ds.project_start_date, ds.project_status, appDocS3Json]
+        );
 
-const appDocFiles = filesUploadedByMulter['s2_application_document_file'] || [];
-const appDocS3KeysJson = JSON.stringify(appDocFiles.map(file => file.s3Key));
-
-await connection.query(
-    `INSERT INTO project_dates_status (application_id, academic_year, application_date, application_status, calendar_year, financial_closing_status, financial_year, project_duration, project_end_date, project_secured_date, project_start_date, project_status, application_document_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [mainApplicationId, ds.academic_year, ds.application_date, ds.application_status, ds.calendar_year, ds.financial_closing_status, ds.financial_year, ds.project_duration, ds.project_end_date, ds.project_secured_date, ds.project_start_date, ds.project_status, appDocS3KeysJson] // Passing the JSON here
-);
-
-        // Section 3: `funding_collaboration` table (1:N)
+        // Section 3: `funding_collaboration` table
         if (grantDetails.fundingCollaborations && grantDetails.fundingCollaborations.length > 0) {
             for (const item of grantDetails.fundingCollaborations) {
                 await connection.query(`INSERT INTO funding_collaboration (application_id, funding_agencies_name, collaboration_name, collaboration_country_of_origin, collaboration_contact_details) VALUES (?, ?, ?, ?, ?)`, [mainApplicationId, item.funding_agencies_name, item.collaboration_name, item.collaboration_country_of_origin, item.collaboration_contact_details]);
             }
         }
-        
-//         // Section 4: `principal_investigators` table (1:N with file)
-//         if (grantDetails.principalInvestigators && grantDetails.principalInvestigators.length > 0) {
-//     const piPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's4_pi_photographs'); // No need for expected count here
-//     let newFileIndex = 0; // Use a separate index for files
 
-//     for (const pi of grantDetails.principalInvestigators) {
-//         // This is the correct logic that was missing
-//         const piPhotoKey = piPhotoS3Keys[newFileIndex] || null;
-//         const piPhotoKeyJson = JSON.stringify(piPhotoKey ? [piPhotoKey] : []); // Create the JSON array string
-        
-//         await connection.query(
-//             `INSERT INTO principal_investigators (application_id, name_of_pi, pi_contact_details, pi_affiliating_institution, pi_affiliating_country, pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-//             [mainApplicationId, pi.name_of_pi, pi.pi_contact_details, pi.pi_affiliating_institution, pi.pi_affiliating_country, piPhotoKeyJson] // Use the new JSON variable
-//         );
-//         newFileIndex++; // Move to the next uploaded file for the next PI
-//     }
-// }
+        // Section 4: `principal_investigators` table
+        if (grantDetails.principalInvestigators && grantDetails.principalInvestigators.length > 0) {
+            const piPhotoQueue = getS3InfoArray('s4_pi_photographs');
+            for (const pi of grantDetails.principalInvestigators) {
+                const filesForThisPi = piPhotoQueue.splice(0, pi.newFileCount || 0);
+                const piPhotoJson = JSON.stringify(filesForThisPi);
+                await connection.query(
+                    `INSERT INTO principal_investigators (application_id, name_of_pi, pi_contact_details, pi_affiliating_institution, pi_affiliating_country, pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, pi.name_of_pi, pi.pi_contact_details, pi.pi_affiliating_institution, pi.pi_affiliating_country, piPhotoJson]
+                );
+            }
+        }
 
-//     // Section 5: `co_investigators` table (1:N with file)
-
-
-
-//         if (grantDetails.coInvestigators && grantDetails.coInvestigators.length > 0) {
-//     const coPiPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's5_co_pi_photographs');
-//     let newFileIndex = 0;
-
-//     for (const coPi of grantDetails.coInvestigators) {
-//         const coPiPhotoKey = coPiPhotoS3Keys[newFileIndex] || null;
-//         const coPiPhotoKeyJson = JSON.stringify(coPiPhotoKey ? [coPiPhotoKey] : []); // Create JSON array string
-        
-//         await connection.query(
-//             `INSERT INTO co_investigators (application_id, name_of_co_pi, co_pi_contact_details, co_pi_affiliating_institution, co_pi_affiliating_country, co_pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-//             [mainApplicationId, coPi.name_of_co_pi, coPi.co_pi_contact_details, coPi.co_pi_affiliating_institution, coPi.co_pi_affiliating_country, coPiPhotoKeyJson]
-//         );
-//         newFileIndex++;
-//     }
-// }
-
-
-// Section 4: `principal_investigators` table (1:N with file)
-if (grantDetails.principalInvestigators && grantDetails.principalInvestigators.length > 0) {
-    const allPiPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's4_pi_photographs');
-    let fileCursor = 0; // Use a cursor to track our position in the flat file array
-
-    for (const pi of grantDetails.principalInvestigators) {
-        const newFileCount = pi.newFileCount || 0;
-        const filesForThisPi = allPiPhotoS3Keys.slice(fileCursor, fileCursor + newFileCount);
-        fileCursor += newFileCount; // Move the cursor forward
-
-        const piPhotoKeyJson = JSON.stringify(filesForThisPi); // Store as a JSON array
-        
-        await connection.query(
-            `INSERT INTO principal_investigators (application_id, name_of_pi, pi_contact_details, pi_affiliating_institution, pi_affiliating_country, pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [mainApplicationId, pi.name_of_pi, pi.pi_contact_details, pi.pi_affiliating_institution, pi.pi_affiliating_country, piPhotoKeyJson]
-        );
-    }
-}
-
-// Section 5: `co_investigators` table (1:N with file)
-if (grantDetails.coInvestigators && grantDetails.coInvestigators.length > 0) {
-    const allCoPiPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's5_co_pi_photographs');
-    let fileCursor = 0;
-
-    for (const coPi of grantDetails.coInvestigators) {
-        const newFileCount = coPi.newFileCount || 0;
-        const filesForThisCoPi = allCoPiPhotoS3Keys.slice(fileCursor, fileCursor + newFileCount);
-        fileCursor += newFileCount;
-
-        const coPiPhotoKeyJson = JSON.stringify(filesForThisCoPi); // Store as a JSON array
-        
-        await connection.query(
-            `INSERT INTO co_investigators (application_id, name_of_co_pi, co_pi_contact_details, co_pi_affiliating_institution, co_pi_affiliating_country, co_pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [mainApplicationId, coPi.name_of_co_pi, coPi.co_pi_contact_details, coPi.co_pi_affiliating_institution, coPi.co_pi_affiliating_country, coPiPhotoKeyJson]
-        );
-    }
-}
-
+        // Section 5: `co_investigators` table
+        if (grantDetails.coInvestigators && grantDetails.coInvestigators.length > 0) {
+            const coPiPhotoQueue = getS3InfoArray('s5_co_pi_photographs');
+            for (const coPi of grantDetails.coInvestigators) {
+                const filesForThisCoPi = coPiPhotoQueue.splice(0, coPi.newFileCount || 0);
+                const coPiPhotoJson = JSON.stringify(filesForThisCoPi);
+                await connection.query(
+                    `INSERT INTO co_investigators (application_id, name_of_co_pi, co_pi_contact_details, co_pi_affiliating_institution, co_pi_affiliating_country, co_pi_photograph_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, coPi.name_of_co_pi, coPi.co_pi_contact_details, coPi.co_pi_affiliating_institution, coPi.co_pi_affiliating_country, coPiPhotoJson]
+                );
+            }
+        }
 
         // Section 6: `grant_info` table
         const gi = grantDetails.amountsOverheads || {};
-
-        const financialDocFiles = filesUploadedByMulter['s6_financial_documents_file'] || [];
-        const financialDocS3KeysJson = JSON.stringify(financialDocFiles.map(file => file.s3Key));
-
-        let remainingAmount = gi.grant_amount_in_inr;
-        if (typeof gi.remaining_amount_inr === 'number') { remainingAmount = gi.remaining_amount_inr; }
-        await connection.query(`INSERT INTO grant_info (application_id, grant_sanctioned_amount, currency, exchange_rate, grant_amount_in_inr, amount_in_usd, overheads_percentage, overheads_secured, overheads_received, gst_applicable, financial_documents_s3_key, remaining_amount_inr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [mainApplicationId, gi.grant_sanctioned_amount_original_currency, gi.currency_code, gi.exchange_rate_to_inr, gi.grant_amount_in_inr, gi.amount_in_usd_equivalent, gi.overheads_percentage, gi.overheads_secured_inr, gi.overheads_received_inr, gi.gst_applicable, financialDocS3KeysJson, remainingAmount]);
-
-        
-
+        const financialDocS3Json = JSON.stringify(getS3InfoArray('s6_financial_documents_file'));
+        await connection.query(`INSERT INTO grant_info (application_id, grant_sanctioned_amount, currency, exchange_rate, grant_amount_in_inr, amount_in_usd, overheads_percentage, overheads_secured, overheads_received, gst_applicable, financial_documents_s3_key, remaining_amount_inr) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [mainApplicationId, gi.grant_sanctioned_amount_original_currency, gi.currency_code, gi.exchange_rate_to_inr, gi.grant_amount_in_inr, gi.amount_in_usd_equivalent, gi.overheads_percentage, gi.overheads_secured_inr, gi.overheads_received_inr, gi.gst_applicable, financialDocS3Json, gi.grant_amount_in_inr]);
 
         // Section 7: `funds_received` table
-// if (grantDetails.fundInstallments && grantDetails.fundInstallments.length > 0) {
-//     const installmentDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's7_fund_received_documents');
-//     let newFileIndex = 0;
-
-//     for (const inst of grantDetails.fundInstallments) {
-//         const installmentDocKey = installmentDocS3Keys[newFileIndex] || null;
-//         // The `amount_received_in_inr` column seems redundant if it's the same as installment_amount_inr, but we'll preserve the logic.
-//         const amountReceived = inst.installment_amount_inr; 
-//         const installmentDocKeyJson = JSON.stringify(installmentDocKey ? [installmentDocKey] : []);
-        
-//         await connection.query(
-//             `INSERT INTO funds_received (application_id, fy_year, installment_amount_inr, bank_fee_inr, amount_received_in_inr, installment_date, fund_received_document_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?)`, 
-//             [mainApplicationId, inst.fy_year_installment, inst.installment_amount_inr, inst.bank_fee_inr, amountReceived, inst.installment_date, installmentDocKeyJson]
-//         );
-//         newFileIndex++;
-//     }
-// }
-        
-// Section 7: `funds_received` table
-if (grantDetails.fundInstallments && grantDetails.fundInstallments.length > 0) {
-    const allInstallmentDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's7_fund_received_documents');
-    let fileCursor = 0;
-
-    for (const inst of grantDetails.fundInstallments) {
-        const newFileCount = inst.newFileCount || 0;
-        const filesForThisInstallment = allInstallmentDocS3Keys.slice(fileCursor, fileCursor + newFileCount);
-        fileCursor += newFileCount;
-
-        const installmentDocKeyJson = JSON.stringify(filesForThisInstallment);
-        
-        // --- CORRECTED QUERY: Removed the 'amount_received_inr' column and its value ---
-        await connection.query(
-            `INSERT INTO funds_received (application_id, fy_year, installment_amount_inr, bank_fee_inr, installment_date, fund_received_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [mainApplicationId, inst.fy_year_installment, inst.installment_amount_inr, inst.bank_fee_inr, inst.installment_date, installmentDocKeyJson]
-        );
-    }
-}
-
+        if (grantDetails.fundInstallments && grantDetails.fundInstallments.length > 0) {
+            const installmentDocQueue = getS3InfoArray('s7_fund_received_documents');
+            for (const inst of grantDetails.fundInstallments) {
+                const filesForThisInstallment = installmentDocQueue.splice(0, inst.newFileCount || 0);
+                const installmentDocJson = JSON.stringify(filesForThisInstallment);
+                await connection.query(
+                    `INSERT INTO funds_received (application_id, fy_year, installment_amount_inr, bank_fee_inr, installment_date, fund_received_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, inst.fy_year_installment, inst.installment_amount_inr, inst.bank_fee_inr, inst.installment_date, installmentDocJson]
+                );
+            }
+        }
 
         // Section 8: `budget_head` table
         if (grantDetails.budgetHeads && grantDetails.budgetHeads.length > 0) {
@@ -254,179 +445,111 @@ if (grantDetails.fundInstallments && grantDetails.fundInstallments.length > 0) {
             }
         }
 
-
         // Section 9: `project_deliverables` table
-// if (grantDetails.projectDeliverables && grantDetails.projectDeliverables.length > 0) {
-//     const deliverableDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's9_deliverable_documents');
-//     let newFileIndex = 0;
-
-//     for (const del of grantDetails.projectDeliverables) {
-//         const deliverableDocKey = deliverableDocS3Keys[newFileIndex] || null;
-//         const deliverableDocKeyJson = JSON.stringify(deliverableDocKey ? [deliverableDocKey] : []);
+        if (grantDetails.projectDeliverables && grantDetails.projectDeliverables.length > 0) {
+            const deliverableDocQueue = getS3InfoArray('s9_deliverable_documents');
+            for (const del of grantDetails.projectDeliverables) {
+                const filesForThisDeliverable = deliverableDocQueue.splice(0, del.newFileCount || 0);
+                const deliverableDocJson = JSON.stringify(filesForThisDeliverable);
+                await connection.query(
+                    `INSERT INTO project_deliverables (application_id, deliverable_type, deliverable_status, deliverable_start_date, deliverable_due_date, deliverable_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, del.deliverable_description, del.deliverable_status, null, del.deliverable_due_date, deliverableDocJson]
+                );
+            }
+        }
         
-//         await connection.query(
-//             `INSERT INTO project_deliverables (application_id, deliverable_type, deliverable_status, deliverable_start_date, deliverable_due_date, deliverable_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-//             [mainApplicationId, del.deliverable_description, del.deliverable_status, del.deliverable_start_date, del.deliverable_due_date, deliverableDocKeyJson]
-//         );
-//         newFileIndex++;
-//     }
-// }
-
-
-// Section 9: `project_deliverables` table
-if (grantDetails.projectDeliverables && grantDetails.projectDeliverables.length > 0) {
-    const allDeliverableDocS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's9_deliverable_documents');
-    let fileCursor = 0; // Use a cursor to track our position in the flat file array
-
-    for (const del of grantDetails.projectDeliverables) {
-        // Use the count from the payload to slice the correct number of new files
-        const newFileCount = del.newFileCount || 0;
-        const filesForThisDeliverable = allDeliverableDocS3Keys.slice(fileCursor, fileCursor + newFileCount);
-        fileCursor += newFileCount; // Move the cursor forward
-
-        const deliverableDocKeyJson = JSON.stringify(filesForThisDeliverable);
-        
-        await connection.query(
-            `INSERT INTO project_deliverables (application_id, deliverable_type, deliverable_status, deliverable_start_date, deliverable_due_date, deliverable_document_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-            // Note: deliverable_start_date is not in your form, so we'll pass null.
-            [mainApplicationId, del.deliverable_description, del.deliverable_status, null, del.deliverable_due_date, deliverableDocKeyJson]
-        );
-    }
-}
-        
-        
-
-//         // Section 10: `project_staff` table
-// if (grantDetails.projectStaff && grantDetails.projectStaff.length > 0) {
-//     const staffPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_photographs');
-//     const staffAgreementS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_agreements');
-//     let newFileIndex = 0;
-
-//     for (const staff of grantDetails.projectStaff) {
-//         const photoKey = staffPhotoS3Keys[newFileIndex] || null;
-//         const agreementKey = staffAgreementS3Keys[newFileIndex] || null;
-
-//         const photoKeyJson = JSON.stringify(photoKey ? [photoKey] : []);
-//         const agreementKeyJson = JSON.stringify(agreementKey ? [agreementKey] : []);
-        
-//         await connection.query(
-//             `INSERT INTO project_staff (application_id, staff_name, staff_role, staff_stipend_rate, staff_months_paid, staff_total_stipend, staff_per_diem, staff_joining_date, staff_end_date, staff_status, staff_photograph_s3_key, staff_agreement_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-//             [mainApplicationId, staff.staff_name, staff.staff_role, staff.staff_stipend_rate_inr, staff.staff_months_stipend_paid, staff.staff_total_stipend_paid_inr, staff.staff_per_diem_paid_inr, staff.staff_joining_date, staff.staff_end_date, staff.staff_status || 'active', photoKeyJson, agreementKeyJson]
-//         );
-//         newFileIndex++;
-//     }
-// }
-
-
-// Section 10: `project_staff` table
-if (grantDetails.projectStaff && grantDetails.projectStaff.length > 0) {
-    const allStaffPhotoS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_photographs');
-    const allStaffAgreementS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's10_staff_agreements');
-    let photoCursor = 0;
-    let agreementCursor = 0;
-
-    for (const staff of grantDetails.projectStaff) {
-        // Slice photos based on the count for this staff member
-        const newPhotoCount = staff.newPhotoCount || 0;
-        const photosForThisStaff = allStaffPhotoS3Keys.slice(photoCursor, photoCursor + newPhotoCount);
-        photoCursor += newPhotoCount;
-
-        // Slice agreements based on the count for this staff member
-        const newAgreementCount = staff.newAgreementCount || 0;
-        const agreementsForThisStaff = allStaffAgreementS3Keys.slice(agreementCursor, agreementCursor + newAgreementCount);
-        agreementCursor += newAgreementCount;
-
-        const photoKeyJson = JSON.stringify(photosForThisStaff);
-        const agreementKeyJson = JSON.stringify(agreementsForThisStaff);
-        
-        await connection.query(
-            `INSERT INTO project_staff (application_id, staff_name, staff_role, staff_stipend_rate, staff_months_paid, staff_total_stipend, staff_per_diem, staff_joining_date, staff_end_date, staff_status, staff_photograph_s3_key, staff_agreement_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-            [mainApplicationId, staff.staff_name, staff.staff_role, staff.staff_stipend_rate_inr, staff.staff_months_stipend_paid, staff.staff_total_stipend_paid_inr, staff.staff_per_diem_paid_inr, staff.staff_joining_date, staff.staff_end_date, staff.staff_status || 'active', photoKeyJson, agreementKeyJson]
-        );
-    }
-}
-
+        // Section 10: `project_staff` table
+        if (grantDetails.projectStaff && grantDetails.projectStaff.length > 0) {
+            const staffPhotoQueue = getS3InfoArray('s10_staff_photographs');
+            const staffAgreementQueue = getS3InfoArray('s10_staff_agreements');
+            for (const staff of grantDetails.projectStaff) {
+                const photosForThisStaff = staffPhotoQueue.splice(0, staff.newPhotoCount || 0);
+                const agreementsForThisStaff = staffAgreementQueue.splice(0, staff.newAgreementCount || 0);
+                const photoJson = JSON.stringify(photosForThisStaff);
+                const agreementJson = JSON.stringify(agreementsForThisStaff);
+                await connection.query(
+                    `INSERT INTO project_staff (application_id, staff_name, staff_role, staff_st_rate, staff_months_paid, staff_total_stipend, staff_per_diem, staff_joining_date, staff_end_date, staff_status, staff_photograph_s3_key, staff_agreement_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, staff.staff_name, staff.staff_role, staff.staff_stipend_rate_inr, staff.staff_months_stipend_paid, staff.staff_total_stipend_paid_inr, staff.staff_per_diem_paid_inr, staff.staff_joining_date, staff.staff_end_date, staff.staff_status || 'active', photoJson, agreementJson]
+                );
+            }
+        }
 
         // Section 11: `project_equipments` table
-// Corrected logic for Section 11 in the POST / route
-// Section 11: `project_equipments` table
-if (grantDetails.projectEquipments && grantDetails.projectEquipments.length > 0) {
-    const allEquipmentBillS3Keys = getUploadedFileKeysArray(filesUploadedByMulter, 's11_equipment_bills_files');
-    let fileCursor = 0; // Use the correct cursor pattern
-
-    for (const equip of grantDetails.projectEquipments) {
-        // Assume frontend sends 'newFileCount' for each equipment item
-        const newFileCount = equip.newFileCount || 0; 
-        const filesForThisEquipment = allEquipmentBillS3Keys.slice(fileCursor, fileCursor + newFileCount);
-        fileCursor += newFileCount; // Move cursor forward
-
-        const equipmentBillKeyJson = JSON.stringify(filesForThisEquipment);
-        
-        await connection.query(
-            `INSERT INTO project_equipments (application_id, name_of_equipment, quantity_of_equipment, cost_per_unit, total_cost, equipment_bills_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
-            [mainApplicationId, equip.equipment_name_description, equip.quantity_of_equipment, equip.cost_per_unit_inr, equip.total_cost_equipments_inr, equipmentBillKeyJson]
-        );
-    }
-}
+        if (grantDetails.projectEquipments && grantDetails.projectEquipments.length > 0) {
+            const equipmentBillQueue = getS3InfoArray('s11_equipment_bills_files');
+            for (const equip of grantDetails.projectEquipments) {
+                const filesForThisEquipment = equipmentBillQueue.splice(0, equip.newFileCount || 0);
+                const equipmentBillJson = JSON.stringify(filesForThisEquipment);
+                await connection.query(
+                    `INSERT INTO project_equipments (application_id, name_of_equipment, quantity_of_equipment, cost_per_unit, total_cost, equipment_bills_s3_key) VALUES (?, ?, ?, ?, ?, ?)`, 
+                    [mainApplicationId, equip.equipment_name_description, equip.quantity_of_equipment, equip.cost_per_unit_inr, equip.total_cost_equipments_inr, equipmentBillJson]
+                );
+            }
+        }
         
         // Section 12: `project_files` table
-        const finalReportFiles = filesUploadedByMulter['s12_final_report_file'] || [];
-        const finalReportS3KeysJson = JSON.stringify(finalReportFiles.map(file => file.s3Key));
-
-        const projectImageFiles = filesUploadedByMulter['s12_project_image_file'] || [];
-        const projectImageS3KeysJson = JSON.stringify(projectImageFiles.map(file => file.s3Key));
-
-        const overallDocFiles = filesUploadedByMulter['s7_fund_received_document_overall'] || [];
-        const overallDocS3KeysJson = JSON.stringify(overallDocFiles.map(file => file.s3Key));
-
-        await connection.query(`INSERT INTO project_files (application_id, final_report_document_s3_key, project_image_s3_key, overall_s7_doc_s3_key) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE final_report_document_s3_key = VALUES(final_report_document_s3_key), project_image_s3_key = VALUES(project_image_s3_key), overall_s7_doc_s3_key = VALUES(overall_s7_doc_s3_key)`, [mainApplicationId, finalReportS3KeysJson, projectImageS3KeysJson, overallDocS3KeysJson]);
+        const finalReportJson = JSON.stringify(getS3InfoArray('s12_final_report_file'));
+        const projectImageJson = JSON.stringify(getS3InfoArray('s12_project_image_file'));
+        const overallS7DocJson = JSON.stringify(getS3InfoArray('s7_fund_received_document_overall'));
+        await connection.query(`INSERT INTO project_files (application_id, final_report_document_s3_key, project_image_s3_key, overall_s7_doc_s3_key) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE final_report_document_s3_key=VALUES(final_report_document_s3_key), project_image_s3_key=VALUES(project_image_s3_key), overall_s7_doc_s3_key=VALUES(overall_s7_doc_s3_key)`, [mainApplicationId, finalReportJson, projectImageJson, overallS7DocJson]);
 
         await connection.commit();
-        console.log("SERVER POST: Transaction committed successfully.");
         res.status(201).json({ message: 'External grant created successfully', projectId: mainApplicationId });
 
     } catch (error) {
         if (connection) {
             await connection.rollback();
-            console.log("SERVER POST: Transaction rolled back due to error.");
         }
         console.error('SERVER POST: Error creating external grant:', error);
         
-        // S3 file cleanup on failure
-        // CORRECTED LOOP for the catch block
-        const fieldNames = Object.keys(filesUploadedByMulter);
-        for (const fieldName of fieldNames) {
-            const fileArray = filesUploadedByMulter[fieldName];
-            for (const fileObj of fileArray) {
-                if (fileObj.s3Key) {
-                    console.log(`SERVER POST (Rollback Cleanup): Deleting S3 object: ${fileObj.s3Key}`);
-                    await deleteFromS3(fileObj.s3Key);
-                }
-            }
+        for (const s3Key of newlyUploadedS3KeysForRollback) {
+            await deleteFromS3(s3Key);
         }
         
         res.status(500).json({ message: 'Failed to create external grant', error: error.message });
     } finally {
         if (connection) {
             connection.release();
-            console.log("SERVER POST: Database connection released.");
         }
-        console.log(`--- SERVER POST: END Create New Grant for ${mainApplicationId} ---`);
     }
 });
 
+// router.get('/preview/:key(*)', async (req, res) => {
+//     // The (*) in the route parameter allows the key to contain slashes ('/')
+//     const key = req.params.key;
+//     console.log(`--- SERVER GET PREVIEW: Request for key: ${key} ---`);
+    
+//     try {
+//         // Call the new service function to generate the temporary URL
+//         const url = await getSignedUrlForView(key);
+//         // Send the URL back to the frontend in a JSON object
+//         res.json({ url });
+//     } catch (error) {
+//         console.error(`SERVER GET PREVIEW: Error generating URL for key ${key}:`, error);
+//         res.status(500).json({ message: "Could not generate file preview link." });
+//     }
+// });
+
 router.get('/preview/:key(*)', async (req, res) => {
-    // The (*) in the route parameter allows the key to contain slashes ('/')
+    
+    // The (*) allows the key to contain slashes. 
+    // Express automatically decodes the URL parameter for you.
+    // For example, if the request is for '/preview/grants%2Ffile.png',
+    // req.params.key will correctly be the string "grants/file.png".
     const key = req.params.key;
-    console.log(`--- SERVER GET PREVIEW: Request for key: ${key} ---`);
+
+    console.log(`[File Preview Route] Received request for decoded key: "${key}"`);
     
     try {
-        // Call the new service function to generate the temporary URL
+        // Pass the clean, decoded key DIRECTLY to your S3 service.
+        // DO NOT use encodeURIComponent() or any other encoding here.
         const url = await getSignedUrlForView(key);
-        // Send the URL back to the frontend in a JSON object
-        res.json({ url });
+        
+        // Send the secure, temporary URL back to the frontend.
+        res.json({ url: url });
+
     } catch (error) {
-        console.error(`SERVER GET PREVIEW: Error generating URL for key ${key}:`, error);
+        console.error(`[File Preview Route] Error generating signed URL for key "${key}":`, error);
         res.status(500).json({ message: "Could not generate file preview link." });
     }
 });
@@ -653,6 +776,9 @@ const oneToManyTablesConfig = [
 
 
 // === UPDATE GRANT ===
+// In routes/externalGrantRoutes.js
+
+// === UPDATE GRANT (Corrected for Original Filenames) ===
 router.put('/:applicationId', upload.fields(grantUploadFields), async (req, res) => {
     const applicationIdToUpdate = req.params.applicationId;
     console.log(`\n--- SERVER PUT: START Update for Application ID: ${applicationIdToUpdate} ---`);
@@ -671,39 +797,40 @@ router.put('/:applicationId', upload.fields(grantUploadFields), async (req, res)
     const newlyUploadedS3KeysForRollback = [];
 
     const connection = await pool.getConnection();
-    console.log("SERVER PUT: Database connection acquired.");
     await connection.beginTransaction();
-    console.log("SERVER PUT: Transaction started.");
 
     try {
-        // Step 1: Upload all new files to S3 and add the `s3Key` property to the file objects.
+        // Step 1: Upload all new files to S3 and add the {key, name} object to them.
         for (const fieldName in newlyUploadedFiles) {
-            const fileArray = newlyUploadedFiles[fieldName];
-            for (const fileObj of fileArray) {
-                const s3Key = await uploadToS3(fileObj, applicationIdToUpdate, `${fieldName}_updated`);
-                fileObj.s3Key = s3Key;
-                if (s3Key) newlyUploadedS3KeysForRollback.push(s3Key);
+            for (const fileObj of newlyUploadedFiles[fieldName]) {
+                const s3Info = await uploadToS3(fileObj, applicationIdToUpdate, `${fieldName}_updated`);
+                fileObj.s3Info = s3Info;
+                if (s3Info && s3Info.key) {
+                    newlyUploadedS3KeysForRollback.push(s3Info.key);
+                }
             }
         }
         
         // --- Step 2: Update 1-to-1 tables ---
-        console.log("SERVER PUT: Updating 1-to-1 tables.");
-        
         const processSingleEntityFileUpdate = async (tableName, dbColumnName, formFieldName, existingKeepList) => {
             const [rows] = await connection.query(`SELECT ${dbColumnName} FROM ${tableName} WHERE application_id = ?`, [applicationIdToUpdate]);
-            let originalFiles = [];
+            let originalFileObjects = [];
             if (rows[0] && rows[0][dbColumnName]) {
-                try { originalFiles = JSON.parse(rows[0][dbColumnName]); } catch (e) {}
+                try { originalFileObjects = JSON.parse(rows[0][dbColumnName]); } catch (e) {}
             }
-            if(!Array.isArray(originalFiles)) originalFiles = []; // Ensure it is an array
+            if (!Array.isArray(originalFileObjects)) originalFileObjects = [];
 
-            const filesToDelete = originalFiles.filter(key => !(existingKeepList || []).includes(key));
+            // Client sends back stringified objects, so we need to parse them.
+            const keepObjects = (existingKeepList || []).map(item => typeof item === 'string' ? JSON.parse(item) : item);
+            const keepKeys = new Set(keepObjects.map(obj => obj.key));
+
+            const filesToDelete = originalFileObjects.filter(obj => !keepKeys.has(obj.key));
             if (filesToDelete.length > 0) {
-                console.log(`SERVER PUT [S3 Cleanup for ${tableName}]: Deleting ${filesToDelete.length} orphaned file(s).`);
-                await Promise.all(filesToDelete.map(key => deleteFromS3(key)));
+                await Promise.all(filesToDelete.map(obj => deleteFromS3(obj.key)));
             }
-            const newFiles = (newlyUploadedFiles[formFieldName] || []).map(f => f.s3Key);
-            return JSON.stringify([...(existingKeepList || []), ...newFiles]);
+
+            const newFileObjects = (newlyUploadedFiles[formFieldName] || []).map(f => f.s3Info);
+            return JSON.stringify([...keepObjects, ...newFileObjects]);
         };
 
         const core = grantDetails.coreInfo || {};
@@ -736,7 +863,7 @@ router.put('/:applicationId', upload.fields(grantUploadFields), async (req, res)
             [applicationIdToUpdate, finalReportJson, projectImageJson, overallS7Json, finalReportJson, projectImageJson, overallS7Json]
         );
 
-        // --- Step 3: Process all 1-to-many relationships using our new reusable helper ---
+        // --- Step 3: Process all 1-to-many relationships using the reusable helper ---
         for (const config of oneToManyTablesConfig) {
             await processOneToManyRelationship(
                 connection,
@@ -747,88 +874,31 @@ router.put('/:applicationId', upload.fields(grantUploadFields), async (req, res)
             );
         }
 
+        await connection.commit();
+        res.json({ message: 'External grant updated successfully', applicationId: applicationIdToUpdate });
 
-// async function processOneToManyRelationship(connection, applicationId, dataArray = [], allUploadedFiles, config) {
-//     const { tableName, insertQuery, fields, fileConfigs = [] } = config;
-//     console.log(`\nSERVER PUT [${tableName}]: Processing for Application ID ${applicationId}`);
+    } catch (error) {
+        if (connection) {
+            await connection.rollback();
+        }
+        console.error('SERVER PUT: Error updating external grant:', error);
+        for (const s3key of newlyUploadedS3KeysForRollback) {
+            await deleteFromS3(s3key);
+        }
+        res.status(500).json({ message: 'Failed to update external grant', error: error.message });
+    } finally {
+        if (connection) {
+            connection.release();
+        }
+    }
+});
 
-//     // --- (Step 1: Get old S3 keys remains the same) ---
-//     const oldS3KeysInDb = new Set();
-//     if (fileConfigs.length > 0) {
-//         const dbColumns = fileConfigs.map(fc => fc.dbColumn).join(', ');
-//         const [oldFileRows] = await connection.query(`SELECT ${dbColumns} FROM ${tableName} WHERE application_id = ?`, [applicationId]);
-//         oldFileRows.forEach(row => {
-//             fileConfigs.forEach(fc => {
-//                 if (row[fc.dbColumn]) {
-//                     try {
-//                         const parsedKeys = JSON.parse(row[fc.dbColumn]);
-//                         if (Array.isArray(parsedKeys)) {
-//                             parsedKeys.forEach(key => key && oldS3KeysInDb.add(key));
-//                         }
-//                     } catch (e) { /* ignore */ }
-//                 }
-//             });
-//         });
-//     }
 
-//     // --- (Step 2: Delete old DB records remains the same) ---
-//     const [deleteResult] = await connection.query(`DELETE FROM ${tableName} WHERE application_id = ?`, [applicationId]);
-//     console.log(`SERVER PUT [${tableName}]: Deleted ${deleteResult.affectedRows} DB rows.`);
-
-//     // --- (Step 3: Re-insert records with CORRECTED file logic) ---
-//     const currentItemS3KeysInPayload = new Set();
-//     if (dataArray.length > 0) {
-//         // ** THE KEY FIX IS HERE **
-//         // We now create a mutable copy of the new file keys for each file type.
-//         const newFilesQueue = {};
-//         fileConfigs.forEach(fc => {
-//             newFilesQueue[fc.multerFieldName] = getUploadedFileKeysArray(allUploadedFiles, fc.multerFieldName);
-//         });
-
-//         console.log(`SERVER PUT [${tableName}]: Re-inserting ${dataArray.length} items.`);
-//         for (const itemFromFrontend of dataArray) {
-//             const valuesToInsert = fields.map(f => itemFromFrontend[f] === undefined ? null : itemFromFrontend[f]);
-
-//             // For each file type (e.g., photo, agreement), build its final file array
-//             fileConfigs.forEach(fc => {
-//                 const existingFilesToKeep = itemFromFrontend[fc.dbColumn] || [];
-                
-//                 // ** THE CRITICAL CHANGE **
-//                 // Instead of associating all new files with the first item, we check if the frontend
-//                 // sent any NEW files for this specific item. Since the frontend sends one file input per item,
-//                 // the number of new files should correspond to the number of items that had a new file attached.
-//                 // We use `shift()` to consume the next available file from the queue for this item.
-//                 const newFileForThisItem = newFilesQueue[fc.multerFieldName].shift();
-                
-//                 const finalFileArray = [...existingFilesToKeep];
-//                 if (newFileForThisItem) {
-//                     finalFileArray.push(newFileForThisItem);
-//                 }
-                
-//                 const finalFileArrayJson = JSON.stringify(finalFileArray);
-//                 valuesToInsert.push(finalFileArrayJson);
-//                 finalFileArray.forEach(key => key && currentItemS3KeysInPayload.add(key));
-//             });
-            
-//             await connection.query(insertQuery, [applicationId, ...valuesToInsert]);
-//         }
-//     }
-
-//     // --- (Step 4: S3 Cleanup remains the same) ---
-//     oldS3KeysInDb.forEach(async (oldKey) => {
-//         if (!currentItemS3KeysInPayload.has(oldKey)) {
-//             console.log(`SERVER PUT [${tableName}]: S3 CLEANUP - Deleting orphaned S3 file: ${oldKey}`);
-//             await deleteFromS3(oldKey);
-//         }
-//     });
-//     console.log(`SERVER PUT [${tableName}]: Finished processing.`);
-// }    
-
+// Helper function for the UPDATE route
 async function processOneToManyRelationship(connection, applicationId, dataArray = [], allUploadedFiles, config) {
     const { tableName, insertQuery, fields, fileConfigs = [] } = config;
-    console.log(`\nSERVER PUT [${tableName}]: Processing for Application ID ${applicationId}`);
 
-    // --- (Step 1: Get old S3 keys remains the same) ---
+    // 1. Get all old S3 keys from the DB for this table.
     const oldS3KeysInDb = new Set();
     if (fileConfigs.length > 0) {
         const dbColumns = fileConfigs.map(fc => fc.dbColumn).join(', ');
@@ -837,98 +907,55 @@ async function processOneToManyRelationship(connection, applicationId, dataArray
             fileConfigs.forEach(fc => {
                 if (row[fc.dbColumn]) {
                     try {
-                        const parsedKeys = JSON.parse(row[fc.dbColumn]);
-                        if (Array.isArray(parsedKeys)) {
-                            parsedKeys.forEach(key => key && oldS3KeysInDb.add(key));
+                        const parsedObjects = JSON.parse(row[fc.dbColumn]);
+                        if (Array.isArray(parsedObjects)) {
+                            parsedObjects.forEach(obj => obj && obj.key && oldS3KeysInDb.add(obj.key));
                         }
-                    } catch (e) { /* ignore non-json legacy data */ }
+                    } catch (e) { /* ignore */ }
                 }
             });
         });
     }
 
-    // --- (Step 2: Delete old DB records remains the same) ---
-    const [deleteResult] = await connection.query(`DELETE FROM ${tableName} WHERE application_id = ?`, [applicationId]);
-    console.log(`SERVER PUT [${tableName}]: Deleted ${deleteResult.affectedRows} DB rows.`);
+    // 2. Clear all previous records from the database.
+    await connection.query(`DELETE FROM ${tableName} WHERE application_id = ?`, [applicationId]);
 
-    // --- (Step 3: Re-insert records with CORRECTED file logic) ---
+    // 3. Re-insert the new/updated records.
     const currentItemS3KeysInPayload = new Set();
     if (dataArray && dataArray.length > 0) {
-        // Create a mutable queue of new file keys for each file type.
         const newFilesQueue = {};
         fileConfigs.forEach(fc => {
-            newFilesQueue[fc.multerFieldName] = getUploadedFileKeysArray(allUploadedFiles, fc.multerFieldName);
+            newFilesQueue[fc.multerFieldName] = (allUploadedFiles[fc.multerFieldName] || []).map(f => f.s3Info);
         });
 
-        console.log(`SERVER PUT [${tableName}]: Re-inserting ${dataArray.length} items.`);
         for (const itemFromFrontend of dataArray) {
-            const valuesToInsert = fields.map(f => itemFromFrontend[f] === undefined ? null : itemFromFrontend[f]);
+            const valuesToInsert = fields.map(f => itemFromFrontend[f]);
 
-            // For each file type (e.g., photo, agreement), build its final file array
             fileConfigs.forEach(fc => {
-                const existingFilesToKeep = itemFromFrontend[fc.dbColumn] || [];
-                
-                // *** THE KEY FIX for UPDATE ***
-                // Use the count from the frontend to slice the correct number of new files from the queue.
-                // const newFileCount = itemFromFrontend.newFileCount || 0; // Assumes frontend sends this count
+                const existingFilesToKeep = (itemFromFrontend[fc.dbColumn] || []).map(item => typeof item === 'string' ? JSON.parse(item) : item);
                 const newFileCount = itemFromFrontend[fc.countPropertyName] || 0;
-
                 const newFilesForThisItem = newFilesQueue[fc.multerFieldName].splice(0, newFileCount);
-                
                 const finalFileArray = [...existingFilesToKeep, ...newFilesForThisItem];
                 
-                const finalFileArrayJson = JSON.stringify(finalFileArray);
-                valuesToInsert.push(finalFileArrayJson);
-                finalFileArray.forEach(key => key && currentItemS3KeysInPayload.add(key));
+                valuesToInsert.push(JSON.stringify(finalFileArray));
+                finalFileArray.forEach(obj => obj && obj.key && currentItemS3KeysInPayload.add(obj.key));
             });
             
             await connection.query(insertQuery, [applicationId, ...valuesToInsert]);
         }
     }
 
-    // --- (Step 4: S3 Cleanup remains the same) ---
-    oldS3KeysInDb.forEach(async (oldKey) => {
+    // 4. Clean up any orphaned S3 files.
+    for (const oldKey of oldS3KeysInDb) {
         if (!currentItemS3KeysInPayload.has(oldKey)) {
-            console.log(`SERVER PUT [${tableName}]: S3 CLEANUP - Deleting orphaned S3 file: ${oldKey}`);
             await deleteFromS3(oldKey);
         }
-    });
-    console.log(`SERVER PUT [${tableName}]: Finished processing.`);
+    }
 }
 
 
-
-await connection.commit();
-        console.log("SERVER PUT: Transaction committed successfully.");
-        res.json({ message: 'External grant updated successfully', applicationId: applicationIdToUpdate });
-
-    } catch (error) {
-        if (connection) {
-            await connection.rollback();
-            console.log("SERVER PUT: Transaction rolled back due to error.");
-        }
-        console.error('SERVER PUT: Error updating external grant:', error);
-        for (const s3key of newlyUploadedS3KeysForRollback) {
-            console.log(`SERVER PUT (Rollback Cleanup): Deleting newly uploaded S3 object: ${s3key}`);
-            await deleteFromS3(s3key);
-        }
-        res.status(500).json({ message: 'Failed to update external grant', error: error.message });
-    } finally {
-        if (connection) {
-            connection.release();
-            console.log("SERVER PUT: Database connection released.");
-        }
-        console.log(`--- SERVER PUT: END Update for Application ID: ${applicationIdToUpdate} ---\n`);
-    }
-});
-// =========================================================================
-// =========================================================================
-// =========  END: COMPLETE REPLACEMENT FOR THE UPDATE LOGIC  ==========
-// =========================================================================
-
 // === GET ALL GRANTS ===
-// This is the single, correct route handler for fetching a list of grants.
-// === GET ALL GRANTS (WITH ADVANCED FILTERING) ===
+
 router.get('/', async (req, res) => {
     console.log("SERVER GET ALL: Received request with query params:", req.query);
     try {

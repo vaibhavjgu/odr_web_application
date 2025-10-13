@@ -59,7 +59,8 @@ const internalGrantUploadFields = [
     { name: 'fw_uploader', maxCount: 20 },     
     { name: 'inst_uploader', maxCount: 20 },     
     { name: 'diss_uploader', maxCount: 20 },     
-    { name: 'misc_uploader', maxCount: 20 }      
+    { name: 'misc_uploader', maxCount: 20 },
+    { name: 'finalReportDoc_uploader', maxCount: 20 }       
 ];
 
 // --- CONFIGURATION FOR INVENTORY ---

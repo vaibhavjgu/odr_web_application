@@ -365,7 +365,6 @@ const totalFunding = grants.reduce((sum, g) => sum + (parseFloat(g.grant_amount_
                 return links;
             }
 
-       // REPLACE your old setupPagination function with this one
 
 function setupPagination(totalItems) {
     const paginationList = document.getElementById('paginationList');
@@ -530,6 +529,44 @@ function setupPagination(totalItems) {
                 // console.warn(`Element with ID '${elementId}' not found during form population.`);
             }
         }
+
+
+function populateMultiFileDisplay(fileInputBaseId, fileData) {
+    const displayContainerId = `${fileInputBaseId}_display_container`;
+    const displayContainer = document.getElementById(displayContainerId);
+    if (!displayContainer) return;
+
+    displayContainer.innerHTML = ''; // Clear previous content
+
+    let fileObjects = [];
+    if (Array.isArray(fileData)) {
+        fileObjects = fileData;
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        try { fileObjects = JSON.parse(fileData); } catch (e) {}
+    }
+    
+    if (Array.isArray(fileObjects) && fileObjects.length > 0) {
+        fileObjects.forEach(file => {
+            if (!file || !file.key) return; // Must be an object with a key
+            const displayName = file.name || file.key.split('/').pop();
+            const fileElement = document.createElement('div');
+            fileElement.className = 'existing-file-item';
+            
+            fileElement.innerHTML = `
+                <span title="${displayName}">${displayName}</span>
+                <button type="button" class="btn-remove-file" title="Remove this file">&times;</button>
+                <input type="hidden" name="existing_files_${fileInputBaseId}[]" value='${JSON.stringify(file)}'>
+            `;
+            
+            fileElement.querySelector('.btn-remove-file').addEventListener('click', () => {
+                fileElement.remove();
+            });
+            displayContainer.appendChild(fileElement);
+        });
+    } else {
+        displayContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+    }
+}
 
         function setFileDisplay(fileInputBaseId, s3Key) {
             const displaySpan = document.getElementById(`${fileInputBaseId}_display`);
@@ -1137,6 +1174,20 @@ data.filesOther.overall_s7_doc_s3_key = Array.from(document.querySelectorAll('in
             firstErrorField?.scrollIntoView({ behavior: 'smooth', block: 'center' });
             return; // Stop submission
         }
+
+const appIdField = document.getElementById('application_id');
+if (appIdField && appIdField.value) {
+    const originalId = appIdField.value.trim();
+    // Only allow alphanumeric, hyphens, and underscores
+    const sanitizedId = originalId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    if (sanitizedId !== originalId) {
+        if (!confirm(`Application ID will be changed from "${originalId}" to "${sanitizedId}" to ensure compatibility. Continue?`)) {
+            return;
+        }
+        appIdField.value = sanitizedId;
+    }
+}
+
             const grantDataObject = collectGrantFormData();
             
 
@@ -1223,8 +1274,7 @@ data.filesOther.overall_s7_doc_s3_key = Array.from(document.querySelectorAll('in
             }
         }
 
-        // --- Modal Handling ---
-        // --- (REPLACE) MODAL HANDLING LOGIC ---
+
 
 // Helper function to close any currently visible modals
 function closeAllModals() {
@@ -1309,81 +1359,65 @@ window.closeModal = function(modalId) {
 
 
 
+
 function formatDisplayValue(key, value) {
-    // --- UNIFIED FILE HANDLING LOGIC ---
     const isFileKey = key && (key.toLowerCase().endsWith('_s3_key') || key.toLowerCase().endsWith('_file') || key.toLowerCase().endsWith('_files'));
 
+    // --- NEW UNIFIED FILE HANDLING LOGIC ---
     if (isFileKey) {
-        let fileKeys = [];
-        if (typeof value === 'string' && value.startsWith('[') && value.endsWith(']')) {
-            try { fileKeys = JSON.parse(value); } catch (e) { fileKeys = []; }
-        } else if (Array.isArray(value)) {
-            fileKeys = value;
-        } else if (typeof value === 'string' && value) {
-            fileKeys = [value];
+        let fileObjects = [];
+        if (Array.isArray(value)) {
+            fileObjects = value.filter(Boolean);
+        } else if (typeof value === 'string' && value.trim().startsWith('[')) {
+            try { fileObjects = JSON.parse(value); } catch (e) {}
         }
 
-        if (fileKeys.length === 0 || !fileKeys[0]) {
+        if (!Array.isArray(fileObjects) || fileObjects.length === 0) {
             return '<em style="color: #999;">N/A</em>';
         }
 
-        return fileKeys.map(fileKey => {
-            if (!fileKey) return '';
-            const fileName = String(fileKey).split('/').pop();
-            const safeKey = encodeURIComponent(fileKey);
-            return `<a href="#" onclick="event.preventDefault(); window.previewFile('${safeKey}')" class="file-download-link" title="Click to preview ${fileName}">${fileName}</a>`;
+        return fileObjects.map(file => {
+            if (!file || !file.key) return ''; // Check for the object structure
+            // Use original name, with a fallback to the key's filename part
+            const displayName = file.name || file.key.split('/').pop();
+            const fileUrl = `/api/s3/view/${encodeURIComponent(file.key)}`;
+            return `
+                <a href="${fileUrl}" target="_blank" class="file-download-link" title="Click to open ${displayName} in a new tab">
+                    <i class="fas fa-file-download mr-1"></i> ${displayName}
+                </a>`;
         }).join('<br>');
     }
+    // --- END OF NEW FILE HANDLING LOGIC ---
 
+    // The rest of your formatting logic remains the same
     let displayValue = value;
+    const nonCurrencyKeywords = ['project_id_funder', 'funder_type', 'type_of_grant', 'project_title', 'department_name', 'fcra_type', 'application_id', 'project_id_odr', 'funding_agencies_name', 'collaboration_name', 'collaboration_country_of_origin', 'collaboration_contact_details', 'name_of_pi', 'pi_contact_details', 'pi_affiliating_institution', 'pi_affiliating_country', 'name_of_co_pi', 'co_pi_contact_details', 'co_pi_affiliating_institution', 'co_pi_affiliating_country', 'project_status', 'application_status', 'currency', 'project_duration', 'financial_closing_status', 'fy_year_installment', 'budget_head_name', 'deliverable_description', 'deliverable_status', 'staff_name', 'staff_role', 'staff_status', 'equipment_name_description', 'gst_applicable'];
 
-    // --- LIST OF FIELDS THAT ARE STRINGS AND SHOULD NOT BE FORMATTED AS CURRENCY ---
-    const nonCurrencyKeywords = [
-        'project_id_funder', 'funder_type', 'type_of_grant', 'project_title',
-        'department_name', 'fcra_type', 'application_id', 'project_id_odr',
-        'funding_agencies_name', 'collaboration_name', 'collaboration_country_of_origin', 'collaboration_contact_details',
-        'name_of_pi', 'pi_contact_details', 'pi_affiliating_institution', 'pi_affiliating_country',
-        'name_of_co_pi', 'co_pi_contact_details', 'co_pi_affiliating_institution', 'co_pi_affiliating_country',
-        'project_status', 'application_status', 'currency', 'project_duration', // 'currency_code' changed to 'currency'
-        'financial_closing_status', 'fy_year_installment', 'budget_head_name',
-        'deliverable_description', 'deliverable_status', 'staff_name', 'staff_role', 'staff_status',
-        'equipment_name_description',
-        'gst_applicable' // <-- **GST IS NOW EXCLUDED FROM CURRENCY FORMATTING**
-    ];
-
-    // --- FORMATTING LOGIC CHAIN ---
     if (key && key.toLowerCase().includes('date') && value) {
         displayValue = formatDate(value, 'DD-MM-YYYY');
     } else if (key === 'project_website_link' && value && typeof value === 'string' && value.startsWith('http')) {
         const cleanValue = String(value).replace(/"/g, '"');
         displayValue = `<a href="${cleanValue}" target="_blank" rel="noopener noreferrer" style="color: blue; text-decoration: underline;">${cleanValue}</a>`;
     } else if (key === 'gst_applicable' && value) {
-        // **GST now has its own specific formatting rule**
-        displayValue = value; // Displays 'Yes', 'No', or 'Exempted' directly
+        displayValue = value;
     } else if (typeof value === 'boolean') {
-        // General boolean handler (for any other potential boolean fields)
         displayValue = value ? 'Yes' : 'No';
     } else if (key && key.includes('percentage')) {
         displayValue = formatPercentage(value);
     } else if (typeof value === 'number' && !nonCurrencyKeywords.includes(key)) {
-        // A more robust check: if it's a number and not in the exclusion list, format as currency.
         displayValue = formatCurrency(value);
     }
 
-    // --- FINAL NULL/EMPTY AND SANITIZATION CHECKS ---
     if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
-        // Use the originally set displayValue unless it's still the raw value
         if (displayValue === value) {
             displayValue = '<em style="color: #999;">N/A</em>';
         }
     } else if (typeof displayValue === 'string' && !displayValue.startsWith('<a') && !displayValue.startsWith('<em')) {
-        // Basic sanitization for display
         displayValue = displayValue.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, '"').replace(/'/g, "'");
     }
 
     return displayValue;
 }
-
 
 
 
@@ -1393,7 +1427,6 @@ function formatDisplayValue(key, value) {
  * @returns {string} - The complete HTML for the modal body.
  */
 
-// REPLACE your existing generateDashboardHtml function with this one
 function generateDashboardHtml(grant) {
     const core = grant.coreInfo || {};
     const dates = grant.datesStatus || {};
@@ -2035,15 +2068,43 @@ function initializeModalTabs() {
 
 
 
-window.previewFile = async function previewFile(encodedKey) {
-    // The key is encoded to be URL-safe. We will make the link in the next step.
-    const statusElement = document.getElementById('modalBodyContent');
-    const originalContent = statusElement ? statusElement.innerHTML : '';
+// window.previewFile = async function previewFile(encodedKey) {
+//     // The key is encoded to be URL-safe. We will make the link in the next step.
+//     const statusElement = document.getElementById('modalBodyContent');
+//     const originalContent = statusElement ? statusElement.innerHTML : '';
+    
+//     try {
+//         // Call our new backend endpoint
+//         const response = await fetch(`${API_BASE_URL}/external-grants/preview/${encodedKey}`, {
+//              headers: {'Authorization': `Bearer ${localStorage.getItem('accessToken')}`}
+//         });
+        
+//         const data = await response.json();
+
+//         if (!response.ok) {
+//             throw new Error(data.message || 'Server error generating preview link.');
+//         }
+
+//         // Open the secure, temporary URL returned from the backend in a new tab
+//         window.open(data.url, '_blank');
+        
+//     } catch (error) {
+//         console.error('File preview error:', error);
+//         alert(`Could not open file: ${error.message}`);
+//     }
+// }
+
+
+window.previewFile = async function previewFile(fileKey) {
+    console.log('[Preview Debug] Original key received:', fileKey);
     
     try {
-        // Call our new backend endpoint
+        // Encode ONCE here, right before the API call
+        const encodedKey = encodeURIComponent(fileKey);
+        console.log('[Preview Debug] Encoded key for URL:', encodedKey);
+        
         const response = await fetch(`${API_BASE_URL}/external-grants/preview/${encodedKey}`, {
-             headers: {'Authorization': `Bearer ${localStorage.getItem('accessToken')}`}
+            headers: {'Authorization': `Bearer ${localStorage.getItem('accessToken')}`}
         });
         
         const data = await response.json();
@@ -2052,7 +2113,7 @@ window.previewFile = async function previewFile(encodedKey) {
             throw new Error(data.message || 'Server error generating preview link.');
         }
 
-        // Open the secure, temporary URL returned from the backend in a new tab
+        console.log('[Preview Debug] Signed URL received, opening in new tab');
         window.open(data.url, '_blank');
         
     } catch (error) {

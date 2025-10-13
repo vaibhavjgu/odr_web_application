@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Office of the Dean of Research</title>
+    
+    <link rel="stylesheet" href="/css/login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+
+    <script>
+    // This script runs immediately on page load.
+    // It checks if the user is already logged in via localStorage.
+    const token = localStorage.getItem('accessToken');
+    if (token) {
+        // If a token exists, the user is likely already authenticated.
+        // Redirect them immediately to the welcome page to prevent showing the login form again.
+        window.location.href = '/welcome.html';
+    }
+</script>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h2 class="subtitle">Welcome to the</h2>
+            <h1 class="title">Office of the Dean of Research</h1>
+            
+            <form id="loginForm"> 
+                <!-- Email input remains the same -->
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" name="email" class="form-control" id="emailInput" placeholder="Email" required>
+                </div>
+
+                <!-- NEW: OTP Input Group - Initially hidden -->
+                <div class="input-group" id="otpGroup" style="display: none;">
+                    <i class="fas fa-key input-icon"></i>
+                    <input type="text" name="otp" class="form-control" id="otpInput" placeholder="OTP Code" inputmode="numeric" pattern="[0-9]{6}">
+                </div>
+
+                <!-- Submit button - Text will be changed by JavaScript -->
+                <button type="submit" id="submitButton" class="btn btn-primary">Send Login Code</button>
+                
+                <!-- Helper text for user feedback -->
+                <p id="infoMessage" class="info-message"></p>
+                <!-- Element to display errors -->
+                <p id="loginError" class="error-message"></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- ENTIRELY NEW JAVASCRIPT LOGIC FOR OTP FLOW -->
+    <!-- ======================================================== -->
+    <script>
+        // --- Get references to all the elements we need to manipulate ---
+        const loginForm = document.getElementById('loginForm');
+        const emailInput = document.getElementById('emailInput');
+        const otpGroup = document.getElementById('otpGroup');
+        const otpInput = document.getElementById('otpInput');
+        const submitButton = document.getElementById('submitButton');
+        const loginError = document.getElementById('loginError');
+        const infoMessage = document.getElementById('infoMessage');
+
+        // This variable tracks which step of the login we are on
+        let isOtpStep = false;
+
+        // --- Main function to handle form submission ---
+        loginForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Prevent default form submission
+            loginError.textContent = ''; // Clear previous errors
+            infoMessage.textContent = '';
+
+            if (!isOtpStep) {
+                // --- STEP 1: Request the OTP ---
+                await handleRequestOtp();
+            } else {
+                // --- STEP 2: Verify the OTP ---
+                await handleVerifyOtp();
+            }
+        });
+
+        // --- Function for requesting the OTP from the server ---
+        async function handleRequestOtp() {
+            const email = emailInput.value;
+            if (!email) {
+                loginError.textContent = 'Please enter your email address.';
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Sending...';
+
+            try {
+                const response = await fetch('/api/auth/generate-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // --- SUCCESS: OTP was sent ---
+                    isOtpStep = true;
+                    otpGroup.style.display = 'block'; // Show the OTP field
+                    otpInput.required = true; // Make OTP field required
+                    emailInput.disabled = true; // Lock the email field
+                    submitButton.textContent = 'Verify & Login';
+                    infoMessage.textContent = 'A login code has been sent to your email.';
+                } else {
+                    // --- ERROR: Display server message (e.g., "Not an authorised user") ---
+                    loginError.textContent = data.message || 'An error occurred.';
+                }
+
+            } catch (error) {
+                loginError.textContent = 'Network error. Please try again.';
+            } finally {
+                submitButton.disabled = false;
+            }
+        }
+
+        // --- Function for verifying the OTP and logging in ---
+        async function handleVerifyOtp() {
+            const email = emailInput.value;
+            const otp = otpInput.value;
+            if (!otp) {
+                loginError.textContent = 'Please enter the OTP from your email.';
+                return;
+            }
+
+            submitButton.disabled = true;
+            submitButton.textContent = 'Verifying...';
+
+            try {
+                const response = await fetch('/api/auth/verify-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, otp: otp })
+                });
+
+                if (response.ok) {
+                    // --- LOGIN SUCCESSFUL ---
+                    const data = await response.json();
+                    localStorage.setItem('accessToken', data.accessToken);
+                    localStorage.setItem('username', data.username);
+                    window.location.href = '/welcome.html'; // Redirect to the welcome page
+                } else {
+                    // --- ERROR: Invalid OTP, expired, etc. ---
+                    const errorData = await response.json();
+                    loginError.textContent = errorData.message || 'Login failed. Please check the code.';
+                }
+            } catch (error) {
+                loginError.textContent = 'Network error. Please try again.';
+            } finally {
+                submitButton.disabled = false;
+                // If login fails, we reset to the OTP step, not the beginning
+                if (loginError.textContent) {
+                    submitButton.textContent = 'Verify & Login';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

@@ -11,7 +11,9 @@ let currentPage = 1;
 const rowsPerPage = 6;
 let activeFilters = {}; // You can change this number
 
-// In internalGrant.js, replace all existing templates with these
+let cachedFilteredGrants = null;
+let lastFilterState = '';
+
 
 const piRowTemplate = `
 <div class="pi-entry group grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4 border p-4 rounded-md bg-gray-50 relative">
@@ -84,6 +86,85 @@ const genericBudgetRowTemplate = (prefix) => `
 // ==========================================================
 // --- 2. HELPER FUNCTIONS
 // ==========================================================
+
+
+// function renderFileLinks(s3KeysJson, fileTypeLabel = 'Document') {
+//     if (!s3KeysJson) return '<span>N/A</span>';
+    
+//     let keys = [];
+//     try {
+//         const parsed = JSON.parse(s3KeysJson);
+//         if (Array.isArray(parsed)) {
+//             keys = parsed.filter(Boolean); 
+//         }
+//     } catch (e) {
+//         if (typeof s3KeysJson === 'string' && s3KeysJson.trim() !== '') {
+//             keys = [s3KeysJson];
+//         }
+//     }
+
+//     if (keys.length === 0) return '<span>N/A</span>';
+
+//     return keys.map((key, index) => {
+//         const fileName = key.split('/').pop();
+//         // This URL must point to a backend route that can stream the file from S3.
+//         // Assuming you have or will create such a route.
+//         const fileUrl = `/api/s3/view/${encodeURIComponent(key)}`;
+//         return `
+//             <a href="${fileUrl}" target="_blank" class="file-link" title="Click to open ${fileName} in a new tab">
+//                 <i class="fa-solid fa-file-arrow-down mr-2"></i>
+//                 ${fileTypeLabel} #${index + 1}
+//             </a>
+//         `;
+//     }).join(' '); // Using a space as a separator for multiple files
+// }
+
+// ========================================================================
+// === FIX: Replace the entire renderFileLinks function with this one.  ===
+// ========================================================================
+
+function renderFileLinks(fileData, fileTypeLabel = 'Document') {
+    // This function now robustly handles data that is already an array,
+    // a JSON string, or a single string key.
+    if (!fileData) return '<span>N/A</span>';
+
+    let keys = [];
+
+    // 1. Check if the data is ALREADY a usable array (this is the main fix).
+    if (Array.isArray(fileData)) {
+        keys = fileData.filter(Boolean); // Use it directly.
+    }
+    // 2. Else, if it's a string that looks like a JSON array, try to parse it.
+    else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(fileData);
+            if (Array.isArray(parsed)) {
+                keys = parsed.filter(Boolean);
+            }
+        } catch (e) {
+            // If parsing fails, treat it as a single file key if it's not empty.
+             if (fileData.trim() !== '') keys = [fileData];
+        }
+    }
+    // 3. As a fallback, handle a single, non-JSON string value.
+    else if (typeof fileData === 'string' && fileData.trim() !== '') {
+        keys = [fileData];
+    }
+
+    if (keys.length === 0) return '<span>N/A</span>';
+
+    return keys.map((key, index) => {
+        const fileName = key.split('/').pop();
+        // The URL points to the server route responsible for streaming the file.
+        const fileUrl = `/api/s3/view/${encodeURIComponent(key)}`;
+        return `
+            <a href="${fileUrl}" target="_blank" class="file-link" title="Click to open ${fileName} in a new tab">
+                <i class="fa-solid fa-file-arrow-down mr-2"></i>
+                ${fileTypeLabel} #${index + 1}
+            </a>
+        `;
+    }).join(' '); // Use a space to separate multiple file links.
+}
 
 function formatCurrency(value) {
     if (value === null || value === undefined || isNaN(parseFloat(value))) return '₹0';
@@ -326,7 +407,67 @@ function initializeDashboardComponents(grant) {
     const taskListContainer = document.getElementById('internalTaskListContainer'); if (taskListContainer && grant.projectDeliverables && grant.projectDeliverables.length > 0) { let html = '<ul class="task-list">'; const deadline = grant.projectDeliverables[0].deliverable_due_date; const description = grant.projectDeliverables[0].deliverable_type || "Final Report/Publication"; if(deadline) { const dueDate = new Date(deadline); html += `<li class="task-list-item"><div class="task-date"><span>${dueDate.getDate()}</span><small>${dueDate.toLocaleString('default', { month: 'short' }).toUpperCase()}</small></div><div class="task-desc">${description}</div></li>`; } html += '</ul>'; taskListContainer.innerHTML = html; } else if (taskListContainer) { taskListContainer.innerHTML = '<p class="text-center text-gray-500 pt-8">No specific deadlines recorded.</p>'; }
     const equipmentContainer = document.getElementById('internalEquipmentContainer'); if (equipmentContainer) { const allEquipment = [ ...(grant.instruments || []).map(e => ({ ...e, source: 'Manual' })), ...(grant.assignedInventory || []).map(e => ({ ...e, source: 'Inventory' })) ]; if (allEquipment.length > 0) { let html = '<div class="equipment-list">'; allEquipment.forEach(item => { html += `<div class="equipment-list-item"><span class="icon"><i class="fas ${item.source === 'Inventory' ? 'fa-warehouse' : 'fa-shopping-cart'}"></i></span><div class="details"><div class="name">${item.item_type || item.item}</div><div class="meta">Source: ${item.source} ${item.tag_no ? `| Tag: ${item.tag_no}` : ''}</div></div></div>`; }); html += '</div>'; equipmentContainer.innerHTML = html; } else { equipmentContainer.innerHTML = '<p class="text-center text-gray-500 pt-8">No equipment assigned.</p>'; } }
 }
-function generateFullDetailsHtml(grant) { function renderSection(title, dataObject, sectionNumber, iconClass) { if (!dataObject || Object.keys(dataObject).length === 0) return ''; const contentHtml = Object.entries(dataObject).map(([key, value]) => `<div class="detail-item"><strong>${getFriendlyLabel(key)}</strong><span>${value || 'N/A'}</span></div>`).join(''); return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-2 gap-x-8">${contentHtml}</div></div>`; } function renderArraySection(title, dataArray, sectionNumber, iconClass) { let contentHtml; if (!dataArray || dataArray.length === 0) { contentHtml = `<div class="detail-item col-span-full"><span><em class="text-gray-500">No data provided.</em></span></div>`; } else { contentHtml = dataArray.map((item, index) => { const itemDetails = Object.entries(item).filter(([key]) => key !== 'id' && key !== 'application_id').map(([key, value]) => `<div class="detail-item"><strong>${getFriendlyLabel(key)}</strong><span>${value || 'N/A'}</span></div>`).join(''); return `<div class="detail-subsection col-span-full bg-gray-50 p-4 rounded-lg"><h4 class="font-semibold text-gray-700 mb-2 border-b pb-2">Entry #${index + 1}</h4><div class="grid lg:grid-cols-2 gap-x-8">${itemDetails}</div></div>`; }).join(''); } return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-1 gap-y-4">${contentHtml}</div></div>`; } const combinedProjectInfo = { ...grant.projectInfo, ...grant.datesStatus, ...grant.grantInfo }; return `${renderSection("Project & Grant Information", combinedProjectInfo, 1, 'fa-info-circle')} ${renderArraySection("Principal Investigators", grant.principalInvestigators, 3, 'fa-user-tie')} ${renderArraySection("Co-Investigators", grant.coInvestigators, 4, 'fa-user-friends')} ${renderArraySection("Human Resources", grant.projectStaff, 5, 'fa-users-cog')} ${renderArraySection("Field Work Budget", grant.fieldworkBudget, 6, 'fa-map-marked-alt')} ${renderArraySection("Travel Budget", grant.travelBudget, 7, 'fa-plane')} ${renderArraySection("Accommodation Budget", grant.accommodationBudget, 8, 'fa-hotel')} ${renderArraySection("Instruments/Resources", [...(grant.instruments || []), ...(grant.assignedInventory || [])], 9, 'fa-tools')} ${renderArraySection("Stationery & Printing Budget", grant.stationeryBudget, 10, 'fa-print')} ${renderArraySection("Dissemination Budget", grant.disseminationBudget, 11, 'fa-bullhorn')} ${renderArraySection("Miscellaneous Budget", grant.miscBudget, 12, 'fa-receipt')} ${renderArraySection("Project Outcomes", grant.projectDeliverables, 13, 'fa-tasks')}`; }
+// function generateFullDetailsHtml(grant) { function renderSection(title, dataObject, sectionNumber, iconClass) { if (!dataObject || Object.keys(dataObject).length === 0) return ''; const contentHtml = Object.entries(dataObject).map(([key, value]) => `<div class="detail-item"><strong>${getFriendlyLabel(key)}</strong><span>${value || 'N/A'}</span></div>`).join(''); return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-2 gap-x-8">${contentHtml}</div></div>`; } function renderArraySection(title, dataArray, sectionNumber, iconClass) { let contentHtml; if (!dataArray || dataArray.length === 0) { contentHtml = `<div class="detail-item col-span-full"><span><em class="text-gray-500">No data provided.</em></span></div>`; } else { contentHtml = dataArray.map((item, index) => { const itemDetails = Object.entries(item).filter(([key]) => key !== 'id' && key !== 'application_id').map(([key, value]) => `<div class="detail-item"><strong>${getFriendlyLabel(key)}</strong><span>${value || 'N/A'}</span></div>`).join(''); return `<div class="detail-subsection col-span-full bg-gray-50 p-4 rounded-lg"><h4 class="font-semibold text-gray-700 mb-2 border-b pb-2">Entry #${index + 1}</h4><div class="grid lg:grid-cols-2 gap-x-8">${itemDetails}</div></div>`; }).join(''); } return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-1 gap-y-4">${contentHtml}</div></div>`; } const combinedProjectInfo = { ...grant.projectInfo, ...grant.datesStatus, ...grant.grantInfo }; return `${renderSection("Project & Grant Information", combinedProjectInfo, 1, 'fa-info-circle')} ${renderArraySection("Principal Investigators", grant.principalInvestigators, 3, 'fa-user-tie')} ${renderArraySection("Co-Investigators", grant.coInvestigators, 4, 'fa-user-friends')} ${renderArraySection("Human Resources", grant.projectStaff, 5, 'fa-users-cog')} ${renderArraySection("Field Work Budget", grant.fieldworkBudget, 6, 'fa-map-marked-alt')} ${renderArraySection("Travel Budget", grant.travelBudget, 7, 'fa-plane')} ${renderArraySection("Accommodation Budget", grant.accommodationBudget, 8, 'fa-hotel')} ${renderArraySection("Instruments/Resources", [...(grant.instruments || []), ...(grant.assignedInventory || [])], 9, 'fa-tools')} ${renderArraySection("Stationery & Printing Budget", grant.stationeryBudget, 10, 'fa-print')} ${renderArraySection("Dissemination Budget", grant.disseminationBudget, 11, 'fa-bullhorn')} ${renderArraySection("Miscellaneous Budget", grant.miscBudget, 12, 'fa-receipt')} ${renderArraySection("Project Outcomes", grant.projectDeliverables, 13, 'fa-tasks')}`; }
+
+function generateFullDetailsHtml(grant) {
+    // Helper to render a specific detail item, using renderFileLinks for S3 keys
+    const renderDetailItem = (key, value) => {
+        const label = getFriendlyLabel(key);
+        let displayValue = value || 'N/A';
+
+        // It checks if a key is an S3 key and calls renderFileLinks if it is.
+        if (key.endsWith('_s3_key') && value) {
+            // Pass the label to the helper for more descriptive link text
+            displayValue = renderFileLinks(value, label.replace('S3 Key', '').trim());
+        }
+
+        return `<div class="detail-item"><strong>${label}</strong><span>${displayValue}</span></div>`;
+    };
+
+    // Generic function to render a whole section of key-value pairs
+    function renderSection(title, dataObject, sectionNumber, iconClass) {
+        if (!dataObject || Object.keys(dataObject).length === 0) return '';
+        const contentHtml = Object.entries(dataObject)
+            .map(([key, value]) => renderDetailItem(key, value))
+            .join('');
+        return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-2 gap-x-8">${contentHtml}</div></div>`;
+    }
+
+    // Generic function to render a section from an array of objects
+    function renderArraySection(title, dataArray, sectionNumber, iconClass) {
+        let contentHtml;
+        if (!dataArray || dataArray.length === 0) {
+            contentHtml = `<div class="detail-item col-span-full"><span><em class="text-gray-500">No data provided.</em></span></div>`;
+        } else {
+            contentHtml = dataArray.map((item, index) => {
+                const itemDetails = Object.entries(item)
+                    .filter(([key]) => key !== 'id' && key !== 'application_id')
+                    .map(([key, value]) => renderDetailItem(key, value))
+                    .join('');
+                return `<div class="detail-subsection col-span-full bg-gray-50 p-4 rounded-lg"><h4 class="font-semibold text-gray-700 mb-2 border-b pb-2">Entry #${index + 1}</h4><div class="grid lg:grid-cols-2 gap-x-8">${itemDetails}</div></div>`;
+            }).join('');
+        }
+        return `<div class="details-accordion-section"><div class="details-accordion-header"><i class="fas ${iconClass} mr-3 text-gray-500"></i> ${sectionNumber}. ${title}</div><div class="details-accordion-content grid lg:grid-cols-1 gap-y-4">${contentHtml}</div></div>`;
+    }
+
+    const combinedProjectInfo = { ...grant.projectInfo, ...grant.datesStatus, ...grant.grantInfo };
+
+    return `
+        ${renderSection("Project & Grant Information", combinedProjectInfo, 1, 'fa-info-circle')}
+        ${renderArraySection("Principal Investigators", grant.principalInvestigators, 3, 'fa-user-tie')}
+        ${renderArraySection("Co-Investigators", grant.coInvestigators, 4, 'fa-user-friends')}
+        ${renderArraySection("Human Resources", grant.projectStaff, 5, 'fa-users-cog')}
+        ${renderArraySection("Field Work Budget", grant.fieldworkBudget, 6, 'fa-map-marked-alt')}
+        ${renderArraySection("Travel Budget", grant.travelBudget, 7, 'fa-plane')}
+        ${renderArraySection("Accommodation Budget", grant.accommodationBudget, 8, 'fa-hotel')}
+        ${renderArraySection("Instruments/Resources", [...(grant.instruments || []), ...(grant.assignedInventory || [])], 9, 'fa-tools')}
+        ${renderArraySection("Stationery & Printing Budget", grant.stationeryBudget, 10, 'fa-print')}
+        ${renderArraySection("Dissemination Budget", grant.disseminationBudget, 11, 'fa-bullhorn')}
+        ${renderArraySection("Miscellaneous Budget", grant.miscBudget, 12, 'fa-receipt')}
+        ${renderArraySection("Project Outcomes", grant.projectDeliverables, 13, 'fa-tasks')}
+    `;
+}
+
 function generateTabbedModalHtml(grant) { return `<div class="modal-tabs"><button class="modal-tab-button active" data-tab="dashboard">Summary</button><button class="modal-tab-button" data-tab="details">All Details</button></div><div id="tab-dashboard" class="tab-content active" style="padding: 0 !important;">${generateDashboardHtml(grant)}</div><div id="tab-details" class="tab-content">${generateFullDetailsHtml(grant)}</div>`; }
 function initializeModalTabs() { const tabButtons = document.querySelectorAll('.modal-tab-button'); const tabContents = document.querySelectorAll('.tab-content'); tabButtons.forEach(button => { button.addEventListener('click', () => { tabButtons.forEach(btn => btn.classList.remove('active')); tabContents.forEach(content => content.classList.remove('active')); button.classList.add('active'); document.getElementById(`tab-${button.dataset.tab}`).classList.add('active'); }); }); }
 
@@ -536,7 +677,71 @@ function updatePaginationInfo(totalItems, start) {
 // ... other core functions like deleteGrant, showGrantDetailsPopup, showForm etc. are correct and remain here ...
 async function deleteGrant(applicationId) { if (!confirm(`Are you sure you want to permanently delete grant #${applicationId}? This action cannot be undone.`)) { return; } try { const response = await fetch(`/api/internal-grants/${applicationId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` } }); const result = await response.json(); if (!response.ok) throw new Error(result.message || 'The server could not delete the grant.'); alert(result.message); fetchAndDisplayGrants(); } catch (error) { console.error('Failed to delete grant:', error); alert(`Error: ${error.message}`); } }
 async function showGrantDetailsPopup(applicationId) { const modal = document.getElementById('viewModal'); const modalContent = modal.querySelector('.modal-content-lg'); const modalBody = document.getElementById('viewDetailsContainer'); if (!modal || !modalBody || !modalContent) return; modalContent.classList.add('modal-content-dashboard'); modalBody.innerHTML = '<p class="text-center p-8">Loading dashboard...</p>'; modal.style.display = 'block'; try { const response = await fetch(`/api/internal-grants/${applicationId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` } }); const grantFullData = await response.json(); if (!response.ok) throw new Error(grantFullData.message || 'Failed to fetch details.'); modalBody.innerHTML = generateTabbedModalHtml(grantFullData); initializeModalTabs(); setTimeout(() => initializeDashboardComponents(grantFullData), 100); } catch (error) { console.error("Error showing grant details:", error); modalBody.innerHTML = `<p class="text-center p-8 text-red-600">Error: ${error.message}</p>`; } }
-async function showForm(applicationId = null) { const mainDataView = document.getElementById('mainDataView'); const grantFormContainer = document.getElementById('grantFormContainer'); const formTitle = document.getElementById('formTitle'); const form = document.getElementById('grantForm'); const applicationIdInput = document.getElementById('applicationId'); form.reset(); document.getElementById('pi-container').innerHTML = ''; document.getElementById('copi-container').innerHTML = ''; document.getElementById('hr-container').innerHTML = ''; document.getElementById('fieldwork-container').innerHTML = ''; document.getElementById('travel-container').innerHTML = ''; document.getElementById('accommodation-container').innerHTML = ''; document.getElementById('instruments-container').innerHTML = ''; document.getElementById('stationery-container').innerHTML = ''; document.getElementById('dissemination-container').innerHTML = ''; document.getElementById('misc-container').innerHTML = ''; if (applicationId) { formTitle.textContent = 'Edit Internal Grant'; applicationIdInput.value = applicationId; try { const response = await fetch(`/api/internal-grants/${applicationId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` } }); if (!response.ok) throw new Error('Grant data could not be fetched.'); const grantData = await response.json(); populateAccordionForm(grantData); } catch (error) { console.error('Error fetching grant for edit:', error); alert('Could not load grant data. Please try again.'); return; } } else { formTitle.textContent = 'Add New Internal Grant'; form.elements['applicationNumber'].readOnly = false; applicationIdInput.value = ''; addItemToContainer('pi-container', piRowTemplate); } mainDataView.style.display = 'none'; grantFormContainer.style.display = 'block'; grantFormContainer.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+
+async function showForm(applicationId = null) { const mainDataView = document.getElementById('mainDataView'); const grantFormContainer = document.getElementById('grantFormContainer'); const formTitle = document.getElementById('formTitle'); const form = document.getElementById('grantForm'); const applicationIdInput = document.getElementById('applicationId'); form.reset(); document.getElementById('pi-container').innerHTML = ''; document.getElementById('copi-container').innerHTML = ''; document.getElementById('hr-container').innerHTML = ''; document.getElementById('fieldwork-container').innerHTML = ''; document.getElementById('travel-container').innerHTML = ''; document.getElementById('accommodation-container').innerHTML = ''; document.getElementById('instruments-container').innerHTML = ''; document.getElementById('stationery-container').innerHTML = ''; document.getElementById('dissemination-container').innerHTML = ''; document.getElementById('misc-container').innerHTML = ''; document.getElementById('existingFinalReportContainer').innerHTML = '<span class="text-sm text-gray-500">None</span>';if (applicationId) { formTitle.textContent = 'Edit Internal Grant'; applicationIdInput.value = applicationId; try { const response = await fetch(`/api/internal-grants/${applicationId}`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` } }); if (!response.ok) throw new Error('Grant data could not be fetched.'); const grantData = await response.json(); populateAccordionForm(grantData); } catch (error) { console.error('Error fetching grant for edit:', error); alert('Could not load grant data. Please try again.'); return; } } else { formTitle.textContent = 'Add New Internal Grant'; form.elements['applicationNumber'].readOnly = false; applicationIdInput.value = ''; addItemToContainer('pi-container', piRowTemplate); } mainDataView.style.display = 'none'; grantFormContainer.style.display = 'block'; grantFormContainer.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+// function populateAccordionForm(data) {
+//     const form = document.getElementById('grantForm');
+//     const setVal = (name, value) => {
+//         const el = form.elements[name];
+//         if (el) {
+//             if (el.type === 'date' && value) {
+//                 el.value = new Date(value).toISOString().split('T')[0];
+//             } else {
+//                 el.value = value || '';
+//             }
+//         }
+//     };
+//     const p = data.projectInfo || {};
+//     const ds = data.datesStatus || {};
+//     const gi = data.grantInfo || {};
+//     setVal('applicationNumber', p.application_id);
+//     form.elements['applicationNumber'].readOnly = true;
+//     setVal('projectName', p.project_title);
+//     setVal('grantNumber', p.internal_grant_number);
+//     setVal('school', p.department_name);
+//     setVal('term', p.project_term);
+//     setVal('totalSanctioned', gi.grant_sanctioned_amount);
+//     setVal('proposalCall', ds.proposal_call_month_year);
+//     setVal('sanctionedDate', ds.project_secured_date);
+//     setVal('startDate', ds.project_start_date);
+//     setVal('endDate', ds.project_end_date);
+//     setVal('duration', ds.project_duration);
+//     setVal('applicationStatus', ds.application_status);
+//     setVal('overallStatus', ds.project_status);
+//     (data.principalInvestigators || []).forEach(pi => {
+//         const piTemplateWithId = piRowTemplate.replace('<input type="hidden" name="piId[]" value="">', `<input type="hidden" name="piId[]" value="${pi.id || ''}">`);
+//         addItemToContainer('pi-container', piTemplateWithId, pi);
+//     });
+//     (data.coInvestigators || []).forEach(copi => addItemToContainer('copi-container', copiRowTemplate, copi));
+//     (data.projectStaff || []).forEach(hr => addItemToContainer('hr-container', hrRowTemplate, hr));
+//     (data.fieldworkBudget || []).forEach(item => addItemToContainer('fieldwork-container', genericBudgetRowTemplate('fw'), item));
+//     (data.travelBudget || []).forEach(item => addItemToContainer('travel-container', travelRowTemplate, item));
+//     (data.accommodationBudget || []).forEach(item => addItemToContainer('accommodation-container', accommodationRowTemplate, item));
+//     (data.stationeryBudget || []).forEach(item => addItemToContainer('stationery-container', stationeryRowTemplate, item));
+//     const manuallyAddedInstruments = data.instruments || [];
+//     const assignedInventoryItems = (data.assignedInventory || []).map(item => ({ ...item, isFromInventory: true
+//     }));
+//     const allInstruments = [...assignedInventoryItems, ...manuallyAddedInstruments];
+//     allInstruments.forEach(item => {
+//         if (item.isFromInventory) {
+//             const assignedItemHtml = `<div class="group grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 border p-4 rounded-md bg-blue-50 relative"><div class="md:col-span-4"><p class="text-sm font-medium text-gray-700"><i class="fas fa-tag mr-2 text-blue-600"></i><span class="font-bold">Assigned from Inventory</span></p></div><div><strong class="block text-xs text-gray-500">Item</strong><p>${item.item || 'N/A'}</p></div><div><strong class="block text-xs text-gray-500">Make</strong><p>${item.make || 'N/A'}</p></div><div><strong class="block text-xs text-gray-500">Tag No.</strong><p>${item.tag_no || 'N/A'}</p></div><div class="text-right"><button type="button" class="unassign-inventory-btn text-red-600 hover:text-red-800 text-sm font-medium" data-inventory-id="${item.id}"><i class="fas fa-undo-alt mr-1"></i> Unassign</button></div></div>`;
+//             const container = document.getElementById('instruments-container');
+//             if (container) container.insertAdjacentHTML('beforeend', assignedItemHtml);
+//         } else {
+//             addItemToContainer('instruments-container', genericBudgetRowTemplate('inst'), item);
+//         }
+//     });
+//     (data.disseminationBudget || []).forEach(item => addItemToContainer('dissemination-container', genericBudgetRowTemplate('diss'), item));
+//     (data.miscBudget || []).forEach(item => addItemToContainer('misc-container', genericBudgetRowTemplate('misc'), item));
+
+//     // --- THIS IS THE FIX ---
+//     // The calculateDuration() call is now on its own line.
+//     calculateDuration();
+// }
+
+// This is the full and complete replacement for the addItemToContainer function.
+
 function populateAccordionForm(data) {
     const form = document.getElementById('grantForm');
     const setVal = (name, value) => {
@@ -552,6 +757,7 @@ function populateAccordionForm(data) {
     const p = data.projectInfo || {};
     const ds = data.datesStatus || {};
     const gi = data.grantInfo || {};
+    
     setVal('applicationNumber', p.application_id);
     form.elements['applicationNumber'].readOnly = true;
     setVal('projectName', p.project_title);
@@ -566,6 +772,7 @@ function populateAccordionForm(data) {
     setVal('duration', ds.project_duration);
     setVal('applicationStatus', ds.application_status);
     setVal('overallStatus', ds.project_status);
+    
     (data.principalInvestigators || []).forEach(pi => {
         const piTemplateWithId = piRowTemplate.replace('<input type="hidden" name="piId[]" value="">', `<input type="hidden" name="piId[]" value="${pi.id || ''}">`);
         addItemToContainer('pi-container', piTemplateWithId, pi);
@@ -576,10 +783,14 @@ function populateAccordionForm(data) {
     (data.travelBudget || []).forEach(item => addItemToContainer('travel-container', travelRowTemplate, item));
     (data.accommodationBudget || []).forEach(item => addItemToContainer('accommodation-container', accommodationRowTemplate, item));
     (data.stationeryBudget || []).forEach(item => addItemToContainer('stationery-container', stationeryRowTemplate, item));
+    
     const manuallyAddedInstruments = data.instruments || [];
-    const assignedInventoryItems = (data.assignedInventory || []).map(item => ({ ...item, isFromInventory: true
+    const assignedInventoryItems = (data.assignedInventory || []).map(item => ({ 
+        ...item, 
+        isFromInventory: true
     }));
     const allInstruments = [...assignedInventoryItems, ...manuallyAddedInstruments];
+    
     allInstruments.forEach(item => {
         if (item.isFromInventory) {
             const assignedItemHtml = `<div class="group grid grid-cols-1 md:grid-cols-4 gap-x-6 gap-y-4 border p-4 rounded-md bg-blue-50 relative"><div class="md:col-span-4"><p class="text-sm font-medium text-gray-700"><i class="fas fa-tag mr-2 text-blue-600"></i><span class="font-bold">Assigned from Inventory</span></p></div><div><strong class="block text-xs text-gray-500">Item</strong><p>${item.item || 'N/A'}</p></div><div><strong class="block text-xs text-gray-500">Make</strong><p>${item.make || 'N/A'}</p></div><div><strong class="block text-xs text-gray-500">Tag No.</strong><p>${item.tag_no || 'N/A'}</p></div><div class="text-right"><button type="button" class="unassign-inventory-btn text-red-600 hover:text-red-800 text-sm font-medium" data-inventory-id="${item.id}"><i class="fas fa-undo-alt mr-1"></i> Unassign</button></div></div>`;
@@ -589,15 +800,39 @@ function populateAccordionForm(data) {
             addItemToContainer('instruments-container', genericBudgetRowTemplate('inst'), item);
         }
     });
+    
     (data.disseminationBudget || []).forEach(item => addItemToContainer('dissemination-container', genericBudgetRowTemplate('diss'), item));
     (data.miscBudget || []).forEach(item => addItemToContainer('misc-container', genericBudgetRowTemplate('misc'), item));
 
-    // --- THIS IS THE FIX ---
-    // The calculateDuration() call is now on its own line.
+    // =========================================================================
+    // FIX: Populate Section 13: Project Deliverables
+    // =========================================================================
+    const deliverables = data.projectDeliverables?.[0] || {};
+    setVal('progressReport', deliverables.progress_report);
+    setVal('scopus', deliverables.deliverable_type);
+    setVal('deadline', deliverables.deliverable_due_date);
+    setVal('extensionRequested', deliverables.extension_requested);
+    setVal('extensionDuration', deliverables.extension_duration);
+
+    // Populate existing final report files
+    const finalReportContainer = document.getElementById('existingFinalReportContainer'); // Use the ID for reliability
+if (finalReportContainer && deliverables.final_report_s3_key) {
+    populateExistingFiles(
+        finalReportContainer, 
+        deliverables.final_report_s3_key, 
+        'existing-final-report-file'
+    );
+} else if (finalReportContainer) {
+    // FIX: If no files exist for this grant, ensure the container is cleared.
+    finalReportContainer.innerHTML = '<span class="text-sm text-gray-500">None</span>';
+}    
+    // =========================================================================
+
+    // Calculate duration after dates are populated
     calculateDuration();
 }
 
-// This is the full and complete replacement for the addItemToContainer function.
+
 function addItemToContainer(containerId, template, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -707,7 +942,283 @@ function addItemToContainer(containerId, template, data = {}) {
 
 
 
-// This is the full and complete replacement for the handleInternalGrantSubmit function.
+// async function handleInternalGrantSubmit(event) {
+//     event.preventDefault();
+//     const form = event.target;
+//     const submitButton = form.querySelector('button[type="submit"]');
+
+//     // Helper to get file info from a form entry
+//     const getFileDetails = (entry, fileInputName, fileDataRole) => {
+//         const existingFilesToKeep = Array.from(entry.querySelectorAll(`input[data-role="${fileDataRole}"]`)).map(input => input.value);
+//         const fileInput = entry.querySelector(`input[name="${fileInputName}"]`);
+//         const newFileCount = fileInput ? fileInput.files.length : 0;
+//         return { existingFilesToKeep, newFileCount };
+//     };
+    
+//     const grantData = {
+//         coreInfo: {}, 
+//         datesStatus: {}, 
+//         grantInfo: {}, 
+//         principalInvestigators: [],
+//         coInvestigators: [], 
+//         projectStaff: [], 
+//         fieldworkBudget: [], 
+//         travelBudget: [],
+//         accommodationBudget: [], 
+//         instruments: [], 
+//         stationeryBudget: [],
+//         disseminationBudget: [], 
+//         miscBudget: [],
+//         projectDeliverables: [] // ← FIX #1: Added this array
+//     };
+
+//     const getVal = (name) => form.elements[name]?.value.trim() || null;
+    
+//     // --- Core & 1-to-1 Info ---
+//     grantData.coreInfo = { 
+//         application_id: getVal('applicationNumber'), 
+//         project_title: getVal('projectName'), 
+//         department_name: getVal('school'), 
+//         internal_grant_number: getVal('grantNumber'), 
+//         project_term: getVal('term') 
+//     };
+    
+//     grantData.datesStatus = { 
+//         proposal_call_month_year: getVal('proposalCall'), 
+//         project_secured_date: getVal('sanctionedDate'), 
+//         project_start_date: getVal('startDate'), 
+//         project_end_date: getVal('endDate'), 
+//         project_duration: getVal('duration'), 
+//         application_status: getVal('applicationStatus'), 
+//         project_status: getVal('overallStatus') 
+//     };
+    
+//     grantData.grantInfo = { 
+//         grant_sanctioned_amount: getVal('totalSanctioned') 
+//     };
+
+//     // ========================================================================
+//     // FIX #1: COLLECT PROJECT DELIVERABLES DATA (Section 13)
+//     // ========================================================================
+//     const finalReportFileInput = form.elements['finalReportDoc_uploader'];
+//     const existingFinalReportFiles = Array.from(
+//         document.querySelectorAll('#finalReportDoc_uploader + div .existing-files-container input[data-role="existing-final-report-file"]')
+//     ).map(input => input.value);
+//     const newFinalReportFileCount = finalReportFileInput ? finalReportFileInput.files.length : 0;
+
+//     // Create a deliverables object and add it to the array
+//     const deliverablesData = {
+//         progress_report: getVal('progressReport'),
+//         deliverable_type: getVal('scopus'),
+//         deliverable_due_date: getVal('deadline'),
+//         extension_requested: getVal('extensionRequested'),
+//         extension_duration: getVal('extensionDuration'),
+//         final_report_s3_key: existingFinalReportFiles, // Existing files to keep
+//         newFileCount: newFinalReportFileCount // New files being uploaded
+//     };
+    
+//     // Only add deliverables if at least one field has data
+//     if (deliverablesData.progress_report || deliverablesData.deliverable_type || 
+//         deliverablesData.deliverable_due_date || newFinalReportFileCount > 0) {
+//         grantData.projectDeliverables.push(deliverablesData);
+//     }
+//     // ========================================================================
+
+//     // --- Dynamic 1-to-Many Sections (Data & File Collection) ---
+
+//     document.querySelectorAll('#pi-container .pi-entry').forEach(entry => {
+//         const name = entry.querySelector('[name="piName[]"]')?.value.trim(); 
+//         if (!name) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'pi_uploader[]', 'existing-pi-file');
+//         grantData.principalInvestigators.push({ 
+//             id: entry.querySelector('[name="piId[]"]')?.value || null, 
+//             name_of_pi: name, 
+//             pi_contact_details: entry.querySelector('[name="piContact[]"]')?.value.trim(), 
+//             pi_photograph_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#copi-container .copi-entry').forEach(entry => {
+//         const name = entry.querySelector('[name="copiName[]"]')?.value.trim(); 
+//         if (!name) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'copi_uploader[]', 'existing-copi-file');
+//         grantData.coInvestigators.push({ 
+//             name_of_co_pi: name, 
+//             co_pi_contact_details: entry.querySelector('[name="copiContact[]"]')?.value.trim(), 
+//             co_pi_affiliating_institution: entry.querySelector('[name="copiInstitution[]"]')?.value.trim(), 
+//             co_pi_photograph_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#hr-container .hr-entry').forEach(entry => {
+//         const name = entry.querySelector('[name="hr_name[]"]')?.value.trim(); 
+//         if (!name) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'hr_uploader[]', 'existing-hr-file');
+//         grantData.projectStaff.push({ 
+//             staff_name: name, 
+//             staff_role: entry.querySelector('[name="hr_designation[]"]')?.value.trim(), 
+//             staff_stipend_rate: entry.querySelector('[name="hr_stipend[]"]')?.value, 
+//             staff_agreement_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#fieldwork-container .fw-entry').forEach(entry => {
+//         const type = entry.querySelector('[name="fw_type[]"]')?.value.trim(); 
+//         if (!type) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'fw_uploader[]', 'existing-fw-file');
+//         grantData.fieldworkBudget.push({ 
+//             type, 
+//             amount_sanctioned: entry.querySelector('[name="fw_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="fw_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#travel-container .travel-entry').forEach(entry => {
+//         const where = entry.querySelector('[name="travel_where[]"]')?.value.trim(); 
+//         if (!where) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'travel_uploader[]', 'existing-travel-file');
+//         grantData.travelBudget.push({ 
+//             travel_where: where, 
+//             start_of_travel: entry.querySelector('[name="travel_start[]"]')?.value, 
+//             end_of_travel: entry.querySelector('[name="travel_end[]"]')?.value, 
+//             amount_sanctioned: entry.querySelector('[name="travel_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="travel_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#accommodation-container .acc-entry').forEach(entry => {
+//         const where = entry.querySelector('[name="acc_where[]"]')?.value.trim(); 
+//         if (!where) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'acc_uploader[]', 'existing-acc-file');
+//         grantData.accommodationBudget.push({ 
+//             location: where, 
+//             number_of_days: entry.querySelector('[name="acc_days[]"]')?.value, 
+//             amount_sanctioned: entry.querySelector('[name="acc_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="acc_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+    
+//     document.querySelectorAll('#instruments-container .inst-entry').forEach(entry => {
+//         const type = entry.querySelector('[name="inst_type[]"]')?.value.trim(); 
+//         if (!type) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'inst_uploader[]', 'existing-inst-file');
+//         grantData.instruments.push({ 
+//             name_of_equipment: type, 
+//             equipment_bills_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#stationery-container .stat-entry').forEach(entry => {
+//         const type = entry.querySelector('[name="stat_type[]"]')?.value.trim(); 
+//         if (!type) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'stat_uploader[]', 'existing-stat-file');
+//         grantData.stationeryBudget.push({ 
+//             type, 
+//             quantity: entry.querySelector('[name="stat_quantity[]"]')?.value, 
+//             amount_sanctioned: entry.querySelector('[name="stat_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="stat_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#dissemination-container .diss-entry').forEach(entry => {
+//         const type = entry.querySelector('[name="diss_type[]"]')?.value.trim(); 
+//         if (!type) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'diss_uploader[]', 'existing-diss-file');
+//         grantData.disseminationBudget.push({ 
+//             type, 
+//             amount_sanctioned: entry.querySelector('[name="diss_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="diss_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     document.querySelectorAll('#misc-container .misc-entry').forEach(entry => {
+//         const type = entry.querySelector('[name="misc_type[]"]')?.value.trim(); 
+//         if (!type) return;
+//         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'misc_uploader[]', 'existing-misc-file');
+//         grantData.miscBudget.push({ 
+//             type, 
+//             amount_sanctioned: entry.querySelector('[name="misc_sanctioned[]"]')?.value, 
+//             amount_utilised: entry.querySelector('[name="misc_utilised[]"]')?.value, 
+//             document_s3_key: existingFilesToKeep, 
+//             newFileCount 
+//         });
+//     });
+
+//     // --- File Appending & API Submission ---
+//     const formData = new FormData();
+//     formData.append('grantDetails', JSON.stringify(grantData));
+
+//     // ========================================================================
+//     // FIX #2: PROPERLY HANDLE BOTH ARRAY AND SINGLE FILE FIELDS
+//     // ========================================================================
+//     // Array file fields (multiple entries with [] in name)
+//     const arrayFileFields = [
+//         'pi_uploader', 'copi_uploader', 'hr_uploader', 'fw_uploader', 
+//         'travel_uploader', 'acc_uploader', 'inst_uploader', 'stat_uploader', 
+//         'diss_uploader', 'misc_uploader'
+//     ];
+    
+//     arrayFileFields.forEach(fieldName => {
+//         document.querySelectorAll(`input[name="${fieldName}[]"]`).forEach(input => {
+//             for (const file of input.files) {
+//                 formData.append(fieldName, file);
+//             }
+//         });
+//     });
+
+//     // Single file field (no [] in name)
+//     const singleFinalReportInput = document.getElementById('finalReportDoc_uploader');
+//     if (singleFinalReportInput && singleFinalReportInput.files.length > 0) {
+//         for (const file of singleFinalReportInput.files) {
+//             formData.append('finalReportDoc_uploader', file);
+//         }
+//     }
+//     // ========================================================================
+
+//     submitButton.disabled = true;
+//     submitButton.textContent = 'Saving...';
+    
+//     const isEditMode = !!document.getElementById('applicationId')?.value;
+//     const method = isEditMode ? 'PUT' : 'POST';
+//     const url = isEditMode ? `/api/internal-grants/${getVal('applicationNumber')}` : '/api/internal-grants';
+
+//     try {
+//         const response = await fetch(url, { 
+//             method, 
+//             headers: { 
+//                 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` 
+//             }, 
+//             body: formData 
+//         });
+//         const result = await response.json();
+//         if (!response.ok) throw new Error(result.message || 'An unknown server error occurred.');
+        
+//         alert(result.message);
+//         hideForm();
+//         fetchAndDisplayGrants();
+//     } catch (error) {
+//         console.error("Submission Error:", error);
+//         alert("Error: " + error.message);
+//     } finally {
+//         submitButton.disabled = false;
+//         submitButton.textContent = 'Save Grant';
+//     }
+// }
+
 async function handleInternalGrantSubmit(event) {
     event.preventDefault();
     const form = event.target;
@@ -722,93 +1233,240 @@ async function handleInternalGrantSubmit(event) {
     };
     
     const grantData = {
-        coreInfo: {}, datesStatus: {}, grantInfo: {}, principalInvestigators: [],
-        coInvestigators: [], projectStaff: [], fieldworkBudget: [], travelBudget: [],
-        accommodationBudget: [], instruments: [], stationeryBudget: [],
-        disseminationBudget: [], miscBudget: [],
+        coreInfo: {}, 
+        datesStatus: {}, 
+        grantInfo: {}, 
+        principalInvestigators: [],
+        coInvestigators: [], 
+        projectStaff: [], 
+        fieldworkBudget: [], 
+        travelBudget: [],
+        accommodationBudget: [], 
+        instruments: [], 
+        stationeryBudget: [],
+        disseminationBudget: [], 
+        miscBudget: [],
+        projectDeliverables: [] // ← FIX: Added this array
     };
 
     const getVal = (name) => form.elements[name]?.value.trim() || null;
     
     // --- Core & 1-to-1 Info ---
-    grantData.coreInfo = { application_id: getVal('applicationNumber'), project_title: getVal('projectName'), department_name: getVal('school'), internal_grant_number: getVal('grantNumber'), project_term: getVal('term') };
-    grantData.datesStatus = { proposal_call_month_year: getVal('proposalCall'), project_secured_date: getVal('sanctionedDate'), project_start_date: getVal('startDate'), project_end_date: getVal('endDate'), project_duration: getVal('duration'), application_status: getVal('applicationStatus'), project_status: getVal('overallStatus') };
-    grantData.grantInfo = { grant_sanctioned_amount: getVal('totalSanctioned') };
+    grantData.coreInfo = { 
+        application_id: getVal('applicationNumber'), 
+        project_title: getVal('projectName'), 
+        department_name: getVal('school'), 
+        internal_grant_number: getVal('grantNumber'), 
+        project_term: getVal('term') 
+    };
+    
+    grantData.datesStatus = { 
+        proposal_call_month_year: getVal('proposalCall'), 
+        project_secured_date: getVal('sanctionedDate'), 
+        project_start_date: getVal('startDate'), 
+        project_end_date: getVal('endDate'), 
+        project_duration: getVal('duration'), 
+        application_status: getVal('applicationStatus'), 
+        project_status: getVal('overallStatus') 
+    };
+    
+    grantData.grantInfo = { 
+        grant_sanctioned_amount: getVal('totalSanctioned') 
+    };
+
+    // =========================================================================
+    // FIX: COLLECT PROJECT DELIVERABLES DATA (Section 13)
+    // =========================================================================
+    const finalReportFileInput = form.elements['finalReportDoc_uploader'];
+    const existingFinalReportFiles = Array.from(
+        document.querySelectorAll('input[data-role="existing-final-report-file"]')
+    ).map(input => input.value).filter(val => val);
+    
+    const newFinalReportFileCount = finalReportFileInput ? finalReportFileInput.files.length : 0;
+
+    // Create a deliverables object and add it to the array
+    const deliverablesData = {
+        progress_report: getVal('progressReport'),
+        deliverable_type: getVal('scopus'),
+        deliverable_due_date: getVal('deadline'),
+        extension_requested: getVal('extensionRequested'),
+        extension_duration: getVal('extensionDuration'),
+        final_report_s3_key: existingFinalReportFiles, // Existing files to keep
+        newFileCount: newFinalReportFileCount // New files being uploaded
+    };
+    
+    // Only add deliverables if at least one field has data
+    if (deliverablesData.progress_report || deliverablesData.deliverable_type || 
+        deliverablesData.deliverable_due_date || newFinalReportFileCount > 0 ||
+        existingFinalReportFiles.length > 0) {
+        grantData.projectDeliverables.push(deliverablesData);
+    }
+    // =========================================================================
 
     // --- Dynamic 1-to-Many Sections (Data & File Collection) ---
 
     document.querySelectorAll('#pi-container .pi-entry').forEach(entry => {
-        const name = entry.querySelector('[name="piName[]"]')?.value.trim(); if (!name) return;
+        const name = entry.querySelector('[name="piName[]"]')?.value.trim(); 
+        if (!name) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'pi_uploader[]', 'existing-pi-file');
-        grantData.principalInvestigators.push({ id: entry.querySelector('[name="piId[]"]')?.value || null, name_of_pi: name, pi_contact_details: entry.querySelector('[name="piContact[]"]')?.value.trim(), pi_photograph_s3_key: existingFilesToKeep, newFileCount });
+        grantData.principalInvestigators.push({ 
+            id: entry.querySelector('[name="piId[]"]')?.value || null, 
+            name_of_pi: name, 
+            pi_contact_details: entry.querySelector('[name="piContact[]"]')?.value.trim(), 
+            pi_photograph_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#copi-container .copi-entry').forEach(entry => {
-        const name = entry.querySelector('[name="copiName[]"]')?.value.trim(); if (!name) return;
+        const name = entry.querySelector('[name="copiName[]"]')?.value.trim(); 
+        if (!name) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'copi_uploader[]', 'existing-copi-file');
-        grantData.coInvestigators.push({ name_of_co_pi: name, co_pi_contact_details: entry.querySelector('[name="copiContact[]"]')?.value.trim(), co_pi_affiliating_institution: entry.querySelector('[name="copiInstitution[]"]')?.value.trim(), co_pi_photograph_s3_key: existingFilesToKeep, newFileCount });
+        grantData.coInvestigators.push({ 
+            name_of_co_pi: name, 
+            co_pi_contact_details: entry.querySelector('[name="copiContact[]"]')?.value.trim(), 
+            co_pi_affiliating_institution: entry.querySelector('[name="copiInstitution[]"]')?.value.trim(), 
+            co_pi_photograph_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#hr-container .hr-entry').forEach(entry => {
-        const name = entry.querySelector('[name="hr_name[]"]')?.value.trim(); if (!name) return;
+        const name = entry.querySelector('[name="hr_name[]"]')?.value.trim(); 
+        if (!name) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'hr_uploader[]', 'existing-hr-file');
-        grantData.projectStaff.push({ staff_name: name, staff_role: entry.querySelector('[name="hr_designation[]"]')?.value.trim(), staff_stipend_rate: entry.querySelector('[name="hr_stipend[]"]')?.value, staff_agreement_s3_key: existingFilesToKeep, newFileCount });
+        grantData.projectStaff.push({ 
+            staff_name: name, 
+            staff_role: entry.querySelector('[name="hr_designation[]"]')?.value.trim(), 
+            staff_stipend_rate: entry.querySelector('[name="hr_stipend[]"]')?.value, 
+            staff_agreement_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#fieldwork-container .fw-entry').forEach(entry => {
-        const type = entry.querySelector('[name="fw_type[]"]')?.value.trim(); if (!type) return;
+        const type = entry.querySelector('[name="fw_type[]"]')?.value.trim(); 
+        if (!type) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'fw_uploader[]', 'existing-fw-file');
-        grantData.fieldworkBudget.push({ type, amount_sanctioned: entry.querySelector('[name="fw_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="fw_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.fieldworkBudget.push({ 
+            type, 
+            amount_sanctioned: entry.querySelector('[name="fw_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="fw_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#travel-container .travel-entry').forEach(entry => {
-        const where = entry.querySelector('[name="travel_where[]"]')?.value.trim(); if (!where) return;
+        const where = entry.querySelector('[name="travel_where[]"]')?.value.trim(); 
+        if (!where) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'travel_uploader[]', 'existing-travel-file');
-        grantData.travelBudget.push({ travel_where: where, start_of_travel: entry.querySelector('[name="travel_start[]"]')?.value, end_of_travel: entry.querySelector('[name="travel_end[]"]')?.value, amount_sanctioned: entry.querySelector('[name="travel_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="travel_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.travelBudget.push({ 
+            travel_where: where, 
+            start_of_travel: entry.querySelector('[name="travel_start[]"]')?.value, 
+            end_of_travel: entry.querySelector('[name="travel_end[]"]')?.value, 
+            amount_sanctioned: entry.querySelector('[name="travel_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="travel_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#accommodation-container .acc-entry').forEach(entry => {
-        const where = entry.querySelector('[name="acc_where[]"]')?.value.trim(); if (!where) return;
+        const where = entry.querySelector('[name="acc_where[]"]')?.value.trim(); 
+        if (!where) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'acc_uploader[]', 'existing-acc-file');
-        grantData.accommodationBudget.push({ location: where, number_of_days: entry.querySelector('[name="acc_days[]"]')?.value, amount_sanctioned: entry.querySelector('[name="acc_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="acc_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.accommodationBudget.push({ 
+            location: where, 
+            number_of_days: entry.querySelector('[name="acc_days[]"]')?.value, 
+            amount_sanctioned: entry.querySelector('[name="acc_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="acc_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
     
     document.querySelectorAll('#instruments-container .inst-entry').forEach(entry => {
-        const type = entry.querySelector('[name="inst_type[]"]')?.value.trim(); if (!type) return;
+        const type = entry.querySelector('[name="inst_type[]"]')?.value.trim(); 
+        if (!type) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'inst_uploader[]', 'existing-inst-file');
-        grantData.instruments.push({ name_of_equipment: type, equipment_bills_s3_key: existingFilesToKeep, newFileCount });
+        grantData.instruments.push({ 
+            name_of_equipment: type, 
+            equipment_bills_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#stationery-container .stat-entry').forEach(entry => {
-        const type = entry.querySelector('[name="stat_type[]"]')?.value.trim(); if (!type) return;
+        const type = entry.querySelector('[name="stat_type[]"]')?.value.trim(); 
+        if (!type) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'stat_uploader[]', 'existing-stat-file');
-        grantData.stationeryBudget.push({ type, quantity: entry.querySelector('[name="stat_quantity[]"]')?.value, amount_sanctioned: entry.querySelector('[name="stat_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="stat_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.stationeryBudget.push({ 
+            type, 
+            quantity: entry.querySelector('[name="stat_quantity[]"]')?.value, 
+            amount_sanctioned: entry.querySelector('[name="stat_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="stat_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#dissemination-container .diss-entry').forEach(entry => {
-        const type = entry.querySelector('[name="diss_type[]"]')?.value.trim(); if (!type) return;
+        const type = entry.querySelector('[name="diss_type[]"]')?.value.trim(); 
+        if (!type) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'diss_uploader[]', 'existing-diss-file');
-        grantData.disseminationBudget.push({ type, amount_sanctioned: entry.querySelector('[name="diss_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="diss_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.disseminationBudget.push({ 
+            type, 
+            amount_sanctioned: entry.querySelector('[name="diss_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="diss_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     document.querySelectorAll('#misc-container .misc-entry').forEach(entry => {
-        const type = entry.querySelector('[name="misc_type[]"]')?.value.trim(); if (!type) return;
+        const type = entry.querySelector('[name="misc_type[]"]')?.value.trim(); 
+        if (!type) return;
         const { existingFilesToKeep, newFileCount } = getFileDetails(entry, 'misc_uploader[]', 'existing-misc-file');
-        grantData.miscBudget.push({ type, amount_sanctioned: entry.querySelector('[name="misc_sanctioned[]"]')?.value, amount_utilised: entry.querySelector('[name="misc_utilised[]"]')?.value, document_s3_key: existingFilesToKeep, newFileCount });
+        grantData.miscBudget.push({ 
+            type, 
+            amount_sanctioned: entry.querySelector('[name="misc_sanctioned[]"]')?.value, 
+            amount_utilised: entry.querySelector('[name="misc_utilised[]"]')?.value, 
+            document_s3_key: existingFilesToKeep, 
+            newFileCount 
+        });
     });
 
     // --- File Appending & API Submission ---
     const formData = new FormData();
     formData.append('grantDetails', JSON.stringify(grantData));
 
-    const fileFields = ['pi_uploader', 'copi_uploader', 'hr_uploader', 'fw_uploader', 'travel_uploader', 'acc_uploader', 'inst_uploader', 'stat_uploader', 'diss_uploader', 'misc_uploader'];
-    fileFields.forEach(fieldName => {
+    // =========================================================================
+    // FIX: PROPERLY HANDLE BOTH ARRAY AND SINGLE FILE FIELDS
+    // =========================================================================
+    // Array file fields (multiple entries with [] in name)
+    const arrayFileFields = [
+        'pi_uploader', 'copi_uploader', 'hr_uploader', 'fw_uploader', 
+        'travel_uploader', 'acc_uploader', 'inst_uploader', 'stat_uploader', 
+        'diss_uploader', 'misc_uploader'
+    ];
+    
+    arrayFileFields.forEach(fieldName => {
         document.querySelectorAll(`input[name="${fieldName}[]"]`).forEach(input => {
             for (const file of input.files) {
                 formData.append(fieldName, file);
             }
         });
     });
+
+    // Single file field (no [] in name)
+    const singleFinalReportInput = document.getElementById('finalReportDoc_uploader');
+    if (singleFinalReportInput && singleFinalReportInput.files.length > 0) {
+        for (const file of singleFinalReportInput.files) {
+            formData.append('finalReportDoc_uploader', file);
+        }
+    }
+    // =========================================================================
 
     submitButton.disabled = true;
     submitButton.textContent = 'Saving...';
@@ -818,7 +1476,13 @@ async function handleInternalGrantSubmit(event) {
     const url = isEditMode ? `/api/internal-grants/${getVal('applicationNumber')}` : '/api/internal-grants';
 
     try {
-        const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${localStorage.getItem('accessToken')}` }, body: formData });
+        const response = await fetch(url, { 
+            method, 
+            headers: { 
+                'Authorization': `Bearer ${localStorage.getItem('accessToken')}` 
+            }, 
+            body: formData 
+        });
         const result = await response.json();
         if (!response.ok) throw new Error(result.message || 'An unknown server error occurred.');
         

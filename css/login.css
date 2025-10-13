@@ -175,3 +175,22 @@ body {
     font-weight: 500;
     min-height: 20px; /* Prevents layout shift when message appears */
 }
+
+
+
+/* Add this to the end of your login.css file */
+
+/* Style for the info message (e.g., "An OTP has been sent...") */
+.info-message {
+    color: #28a745; /* A success green color */
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 500;
+    min-height: 20px;
+}
+
+/* Style for the disabled email input after OTP is sent */
+.form-control:disabled {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}

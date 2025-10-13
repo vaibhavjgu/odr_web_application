@@ -22,12 +22,22 @@ async function processOneToManyRelationship(connection, applicationId, dataArray
         oldFileRows.forEach(row => {
             fileConfigs.forEach(fc => {
                 if (row[fc.dbColumn]) {
+                    // try {
+                    //     const parsedKeys = JSON.parse(row[fc.dbColumn]);
+                    //     if (Array.isArray(parsedKeys)) {
+                    //         parsedKeys.forEach(key => key && oldS3KeysInDb.add(key));
+                    //     }
+                    // } catch (e) { /* ignore non-json values */ }
+
                     try {
                         const parsedKeys = JSON.parse(row[fc.dbColumn]);
                         if (Array.isArray(parsedKeys)) {
                             parsedKeys.forEach(key => key && oldS3KeysInDb.add(key));
                         }
-                    } catch (e) { /* ignore non-json values */ }
+                    } catch (e) {
+                        console.warn(`SERVER PUT [${tableName}]: Invalid JSON in ${fc.dbColumn} for app ${applicationId}:`, row[fc.dbColumn]);
+                        // Continue processing - might be empty string or legacy data format
+                    }
                 }
             });
         });
@@ -62,12 +72,25 @@ const finalFileArrayJson = JSON.stringify(finalFileArray || []);
     }
 
     // Step 4: Clean up any orphaned S3 files for this section.
-    oldS3KeysInDb.forEach(async (oldKey) => {
+    // oldS3KeysInDb.forEach(async (oldKey) => {
+    //     if (!currentItemS3KeysInPayload.has(oldKey)) {
+    //         console.log(`SERVER PUT [S3 Cleanup for ${tableName}]: Deleting orphaned file: ${oldKey}`);
+    //         await deleteFromS3(oldKey);
+    //     }
+    // });
+
+    // Step 4: Clean up any orphaned S3 files for this section.
+    for (const oldKey of oldS3KeysInDb) {
         if (!currentItemS3KeysInPayload.has(oldKey)) {
             console.log(`SERVER PUT [S3 Cleanup for ${tableName}]: Deleting orphaned file: ${oldKey}`);
-            await deleteFromS3(oldKey);
+            try {
+                await deleteFromS3(oldKey);
+            } catch (error) {
+                console.error(`SERVER PUT [S3 Cleanup]: Failed to delete ${oldKey}:`, error);
+                // Continue with other deletions even if one fails
+            }
         }
-    });
+    }
 }
 
 
@@ -150,7 +173,16 @@ const oneToManyTablesConfig = [
         insertQuery: `INSERT INTO internal_budget_misc (application_id, type, amount_sanctioned, amount_utilised, document_s3_key) VALUES (?, ?, ?, ?, ?)`,
         fields: ['type', 'amount_sanctioned', 'amount_utilised'],
         fileConfigs: [{ dbColumn: 'document_s3_key', multerFieldName: 'misc_uploader', countPropertyName: 'newFileCount' }]
-    }
+    },
+
+    // Section 13: Project Deliverables
+   {
+    tableName: 'project_deliverables',
+    dataArrayName: 'projectDeliverables',
+    insertQuery: `INSERT INTO project_deliverables (application_id, progress_report, deliverable_type, deliverable_due_date, extension_requested, extension_duration, final_report_s3_key) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    fields: ['progress_report', 'deliverable_type', 'deliverable_due_date', 'extension_requested', 'extension_duration'],
+    fileConfigs: [{ dbColumn: 'final_report_s3_key', multerFieldName: 'finalReportDoc_uploader', countPropertyName: 'newFileCount' }]
+}
 ];
 
 
@@ -165,8 +197,107 @@ console.dir(internalGrantUploadFields, { depth: null });
 
 
 
+// router.post('/', upload.fields(internalGrantUploadFields), async (req, res) => {
+//     console.log("\n--- [INTERNAL] SERVER POST: (NEW LOGIC) Create new grant ---");
+
+//     if (!req.body.grantDetails) {
+//         return res.status(400).json({ message: "grantDetails is missing." });
+//     }
+
+//     let grantDetails;
+//     try {
+//         grantDetails = JSON.parse(req.body.grantDetails);
+//     } catch (e) {
+//         return res.status(400).json({ message: "Invalid JSON in grantDetails." });
+//     }
+
+//     const filesUploadedByMulter = req.files || {};
+//     const mainApplicationId = grantDetails.coreInfo?.application_id;
+
+//     if (!mainApplicationId) {
+//         return res.status(400).json({ message: "Application Number is required." });
+//     }
+
+//     const connection = await pool.getConnection();
+//     await connection.beginTransaction();
+
+//     try {
+//         // Step 1: Upload all files to S3
+//         for (const fieldName in filesUploadedByMulter) {
+//             for (const fileObj of filesUploadedByMulter[fieldName]) {
+//                 fileObj.s3Key = await uploadToS3(fileObj, mainApplicationId, fieldName);
+//             }
+//         }
+
+//         // Step 2: Insert into parent 'projects' table
+//         const core = grantDetails.coreInfo;
+//         await connection.query(
+//             `INSERT INTO projects (application_id, grant_category, project_title, department_name, internal_grant_number, project_term) VALUES (?, ?, ?, ?, ?, ?)`,
+//             [mainApplicationId, 'INTERNAL', core.project_title, core.department_name, core.internal_grant_number, core.project_term]
+//         );
+        
+//         // Step 3: Insert into other 1-to-1 tables
+//         const ds = grantDetails.datesStatus || {};
+//         await connection.query(`INSERT INTO project_dates_status (application_id, proposal_call_month_year, project_secured_date, project_start_date, project_end_date, project_duration, application_status, project_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+//             [mainApplicationId, ds.proposal_call_month_year, ds.project_secured_date, ds.project_start_date, ds.project_end_date, ds.project_duration, ds.application_status, ds.project_status]);
+        
+//         const gi = grantDetails.grantInfo || {};
+//         await connection.query(`INSERT INTO grant_info (application_id, grant_sanctioned_amount) VALUES (?, ?)`,
+//             [mainApplicationId, gi.grant_sanctioned_amount]);
+
+
+
+//         for (const config of oneToManyTablesConfig) {
+//             const dataArrayForSection = grantDetails[config.dataArrayName];
+
+//             if (dataArrayForSection && dataArrayForSection.length > 0) {
+//                 const allSectionFiles = (filesUploadedByMulter[config.fileConfigs[0].multerFieldName] || []).map(f => f.s3Key);
+//                 let fileCursor = 0;
+
+//                 for (const item of dataArrayForSection) {
+//                     const newFileCount = item.newFileCount || 0;
+//                     const filesForThisItem = allSectionFiles.slice(fileCursor, fileCursor + newFileCount);
+//                     fileCursor += newFileCount;
+//                     const itemFilesJson = JSON.stringify(filesForThisItem || []);
+
+//                     const valuesToInsert = config.fields.map(field => item[field] === undefined ? null : item[field]);
+                    
+//                     await connection.query(config.insertQuery, [
+//                         mainApplicationId,
+//                         ...valuesToInsert,
+//                         itemFilesJson
+//                     ]);
+//                 }
+//             }
+//         }
+//         await connection.commit();
+//         res.status(201).json({ message: 'Internal grant created successfully!' });
+
+//     } catch (error) {
+//         await connection.rollback();
+//         console.error("[INTERNAL] SERVER POST: Error saving grant:", error);
+        
+//         for (const fieldName in filesUploadedByMulter) {
+//             for (const fileObj of filesUploadedByMulter[fieldName]) {
+//                 if(fileObj.s3Key) await deleteFromS3(fileObj.s3Key);
+//             }
+//         }
+
+//         if (error.code === 'ER_DUP_ENTRY') {
+//             return res.status(409).json({ message: `Error: Application ID '${mainApplicationId}' already exists.` });
+//         }
+//         // res.status(500).json({ message: 'A server error occurred.', error: error.message });
+//         res.status(500).json({ message: 'A server error occurred while saving the grant.' });
+//     } finally {
+//         if (connection) connection.release();
+//     }
+// });
+
+
+// REPLACE your entire router.post(...) function with this one.
+
 router.post('/', upload.fields(internalGrantUploadFields), async (req, res) => {
-    console.log("\n--- [INTERNAL] SERVER POST: (NEW LOGIC) Create new grant ---");
+    console.log("\n--- [INTERNAL] SERVER POST: (Corrected Logic) Create new grant ---");
 
     if (!req.body.grantDetails) {
         return res.status(400).json({ message: "grantDetails is missing." });
@@ -189,22 +320,26 @@ router.post('/', upload.fields(internalGrantUploadFields), async (req, res) => {
     const connection = await pool.getConnection();
     await connection.beginTransaction();
 
+    const newlyUploadedS3KeysForRollback = [];
+
     try {
-        // Step 1: Upload all files to S3
+        // Step 1: Upload all new files to S3 and store their keys for potential rollback.
         for (const fieldName in filesUploadedByMulter) {
             for (const fileObj of filesUploadedByMulter[fieldName]) {
-                fileObj.s3Key = await uploadToS3(fileObj, mainApplicationId, fieldName);
+                const s3Key = await uploadToS3(fileObj, mainApplicationId, fieldName);
+                fileObj.s3Key = s3Key;
+                if (s3Key) newlyUploadedS3KeysForRollback.push(s3Key);
             }
         }
 
-        // Step 2: Insert into parent 'projects' table
+        // Step 2: Insert into parent 'projects' table.
         const core = grantDetails.coreInfo;
         await connection.query(
             `INSERT INTO projects (application_id, grant_category, project_title, department_name, internal_grant_number, project_term) VALUES (?, ?, ?, ?, ?, ?)`,
             [mainApplicationId, 'INTERNAL', core.project_title, core.department_name, core.internal_grant_number, core.project_term]
         );
         
-        // Step 3: Insert into other 1-to-1 tables
+        // Step 3: Insert into other 1-to-1 tables.
         const ds = grantDetails.datesStatus || {};
         await connection.query(`INSERT INTO project_dates_status (application_id, proposal_call_month_year, project_secured_date, project_start_date, project_end_date, project_duration, application_status, project_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [mainApplicationId, ds.proposal_call_month_year, ds.project_secured_date, ds.project_start_date, ds.project_end_date, ds.project_duration, ds.application_status, ds.project_status]);
@@ -213,31 +348,30 @@ router.post('/', upload.fields(internalGrantUploadFields), async (req, res) => {
         await connection.query(`INSERT INTO grant_info (application_id, grant_sanctioned_amount) VALUES (?, ?)`,
             [mainApplicationId, gi.grant_sanctioned_amount]);
 
-
-
+        // Step 4: Process all 1-to-many relationships using the central config.
         for (const config of oneToManyTablesConfig) {
-            const dataArrayForSection = grantDetails[config.dataArrayName];
+            const dataArray = grantDetails[config.dataArrayName] || [];
+            if (dataArray.length === 0) continue;
 
-            if (dataArrayForSection && dataArrayForSection.length > 0) {
-                const allSectionFiles = (filesUploadedByMulter[config.fileConfigs[0].multerFieldName] || []).map(f => f.s3Key);
-                let fileCursor = 0;
+            const newFilesQueue = {};
+            config.fileConfigs.forEach(fc => {
+                newFilesQueue[fc.multerFieldName] = (filesUploadedByMulter[fc.multerFieldName] || []).map(f => f.s3Key);
+            });
 
-                for (const item of dataArrayForSection) {
+            for (const item of dataArray) {
+                const valuesToInsert = config.fields.map(field => item[field] === undefined ? null : item[field]);
+                
+                config.fileConfigs.forEach(fc => {
                     const newFileCount = item.newFileCount || 0;
-                    const filesForThisItem = allSectionFiles.slice(fileCursor, fileCursor + newFileCount);
-                    fileCursor += newFileCount;
-                    const itemFilesJson = JSON.stringify(filesForThisItem || []);
-
-                    const valuesToInsert = config.fields.map(field => item[field] === undefined ? null : item[field]);
-                    
-                    await connection.query(config.insertQuery, [
-                        mainApplicationId,
-                        ...valuesToInsert,
-                        itemFilesJson
-                    ]);
-                }
+                    const newFilesForThisItem = newFilesQueue[fc.multerFieldName].splice(0, newFileCount);
+                    const finalFileArrayJson = JSON.stringify(newFilesForThisItem || []);
+                    valuesToInsert.push(finalFileArrayJson);
+                });
+                
+                await connection.query(config.insertQuery, [mainApplicationId, ...valuesToInsert]);
             }
         }
+
         await connection.commit();
         res.status(201).json({ message: 'Internal grant created successfully!' });
 
@@ -245,21 +379,19 @@ router.post('/', upload.fields(internalGrantUploadFields), async (req, res) => {
         await connection.rollback();
         console.error("[INTERNAL] SERVER POST: Error saving grant:", error);
         
-        for (const fieldName in filesUploadedByMulter) {
-            for (const fileObj of filesUploadedByMulter[fieldName]) {
-                if(fileObj.s3Key) await deleteFromS3(fileObj.s3Key);
-            }
+        // On error, delete all files that were just uploaded to S3.
+        for (const s3key of newlyUploadedS3KeysForRollback) {
+            await deleteFromS3(s3key);
         }
 
         if (error.code === 'ER_DUP_ENTRY') {
             return res.status(409).json({ message: `Error: Application ID '${mainApplicationId}' already exists.` });
         }
-        res.status(500).json({ message: 'A server error occurred.', error: error.message });
+        res.status(500).json({ message: 'A server error occurred while saving the grant.' });
     } finally {
         if (connection) connection.release();
     }
 });
-
 /**
  * === GET ALL INTERNAL GRANTS (GET /) ===
  */
@@ -323,79 +455,74 @@ router.get('/', async (req, res) => {
 });
 
 
-// In internalGrantRoutes.js
-
 /**
- * ==================================================
- * === GET ONE INTERNAL GRANT (GET /:applicationId) ===
- * ==================================================
+ * =================================================================
+ * === GET ONE INTERNAL GRANT (OPTIMIZED) (GET /:applicationId) ===
+ * =================================================================
  */
 router.get('/:applicationId', async (req, res) => {
-    // const { applicationId } = req.params;
-
     const applicationId = req.params.applicationId.trim();
-
-    console.log(`\n--- [INTERNAL] SERVER GET ONE: Request for grant ID: ${applicationId} ---`);
+    console.log(`\n--- [INTERNAL] SERVER GET ONE (Optimized): Request for grant ID: ${applicationId} ---`);
 
     const connection = await pool.getConnection();
     try {
-        // Step 1: Fetch the main project record. If it doesn't exist, stop here.
-        const [pRows] = await connection.query("SELECT * FROM projects WHERE application_id = ? AND grant_category = 'INTERNAL'", [applicationId]);
-        if (pRows.length === 0) {
-            return res.status(404).json({ message: "Internal grant not found." });
-        }
-
-        // Initialize the object that will hold all our data.
-        const grantData = { projectInfo: pRows[0] };
-        
-        // Step 2: Fetch all related child data in parallel for efficiency.
+        // Step 1: Fetch all related data in parallel using explicit, optimized queries.
         const [
             // One-to-one tables
-            [dsRows], [giRows], [pfRows], 
+            [pRows], [dsRows], [giRows],
             // One-to-many tables
             [piRows], [coPiRows], [staffRows], [equipRows], [deliverableRows],
-            [travelRows], [accomRows], [fieldworkRows], [stationeryRows], [dissemRows], [miscRows],[assignedInventoryRows]
+            [travelRows], [accomRows], [fieldworkRows], [stationeryRows], [dissemRows], [miscRows], [assignedInventoryRows]
         ] = await Promise.all([
-            // One-to-one queries
-            connection.query("SELECT * FROM project_dates_status WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM grant_info WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM project_files WHERE application_id = ?", [applicationId]), // <-- ADDED THIS
-            // One-to-many queries
-            connection.query("SELECT * FROM principal_investigators WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM co_investigators WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM project_staff WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM project_equipments WHERE application_id = ?", [applicationId]),
-            connection.query("SELECT * FROM project_deliverables WHERE application_id = ?", [applicationId]), // <-- ADDED THIS
+            // --- One-to-one queries with only necessary fields ---
+            connection.query("SELECT application_id, project_title, department_name, internal_grant_number, project_term FROM projects WHERE application_id = ? AND grant_category = 'INTERNAL'", [applicationId]),
+            connection.query("SELECT proposal_call_month_year, project_secured_date, project_start_date, project_end_date, project_duration, application_status, project_status FROM project_dates_status WHERE application_id = ?", [applicationId]),
+            connection.query("SELECT grant_sanctioned_amount FROM grant_info WHERE application_id = ?", [applicationId]),
+            
+            // --- One-to-many queries with only necessary fields ---
+            connection.query("SELECT id, name_of_pi, pi_contact_details, pi_photograph_s3_key FROM principal_investigators WHERE application_id = ?", [applicationId]),
+            connection.query("SELECT id, name_of_co_pi, co_pi_contact_details, co_pi_affiliating_institution, co_pi_photograph_s3_key FROM co_investigators WHERE application_id = ?", [applicationId]),
+            connection.query("SELECT id, staff_name, staff_role, staff_stipend_rate, staff_agreement_s3_key FROM project_staff WHERE application_id = ?", [applicationId]),
+            connection.query("SELECT id, name_of_equipment, equipment_bills_s3_key FROM project_equipments WHERE application_id = ?", [applicationId]),
+            connection.query("SELECT id, progress_report, deliverable_type, deliverable_due_date, extension_requested, extension_duration, final_report_s3_key FROM project_deliverables WHERE application_id = ?", [applicationId]),
+            
+            // --- Internal-specific budget tables (These are not shared, so SELECT * is safe, but being explicit is better) ---
             connection.query("SELECT * FROM internal_budget_travel WHERE application_id = ?", [applicationId]),
             connection.query("SELECT * FROM internal_budget_accommodation WHERE application_id = ?", [applicationId]),
             connection.query("SELECT * FROM internal_budget_fieldwork WHERE application_id = ?", [applicationId]),
             connection.query("SELECT * FROM internal_budget_stationery WHERE application_id = ?", [applicationId]),
             connection.query("SELECT * FROM internal_budget_dissemination WHERE application_id = ?", [applicationId]),
             connection.query("SELECT * FROM internal_budget_misc WHERE application_id = ?", [applicationId]),
+            
+            // Inventory query is already specific
             connection.query("SELECT id, asset_category, item, make, tag_no, status FROM inventory WHERE grant_application_id = ? AND grant_type = ?", [applicationId, 'INTERNAL'])
-
-
         ]);
 
-        // Step 3: Assemble the final JSON object to send to the frontend.
-        // Use `|| {}` or `|| []` as a fallback for cases where a grant has no related records.
-        grantData.datesStatus = dsRows[0] || {};
-        grantData.grantInfo = giRows[0] || {};
-        grantData.projectFiles = pfRows[0] || {}; // <-- ADDED THIS
-        grantData.principalInvestigators = piRows || [];
-        grantData.coInvestigators = coPiRows || [];
-        grantData.projectStaff = staffRows || [];
-        grantData.instruments = equipRows || []; // Mapped from project_equipments
-        grantData.projectDeliverables = deliverableRows || []; // <-- ADDED THIS
-        grantData.travelBudget = travelRows || [];
-        grantData.accommodationBudget = accomRows || [];
-        grantData.fieldworkBudget = fieldworkRows || [];
-        grantData.stationeryBudget = stationeryRows || [];
-        grantData.disseminationBudget = dissemRows || [];
-        grantData.miscBudget = miscRows || [];
-        grantData.assignedInventory = assignedInventoryRows || [];
+        // Step 2: Check if the main project was found. If not, it's a 404.
+        if (pRows.length === 0) {
+            return res.status(404).json({ message: "Internal grant not found." });
+        }
 
-        // Send the complete data object.
+        // Step 3: Assemble the final JSON object to send to the frontend.
+        const grantData = {
+            projectInfo: pRows[0] || {},
+            datesStatus: dsRows[0] || {},
+            grantInfo: giRows[0] || {},
+            principalInvestigators: piRows || [],
+            coInvestigators: coPiRows || [],
+            projectStaff: staffRows || [],
+            instruments: equipRows || [],
+            projectDeliverables: deliverableRows || [],
+            travelBudget: travelRows || [],
+            accommodationBudget: accomRows || [],
+            fieldworkBudget: fieldworkRows || [],
+            stationeryBudget: stationeryRows || [],
+            disseminationBudget: dissemRows || [],
+            miscBudget: miscRows || [],
+            assignedInventory: assignedInventoryRows || []
+        };
+
+        // Step 4: Send the complete, optimized data object.
         res.status(200).json(grantData);
 
     } catch (error) {
@@ -405,7 +532,6 @@ router.get('/:applicationId', async (req, res) => {
         if (connection) connection.release();
     }
 });
-
 
 router.put('/:applicationId', upload.fields(internalGrantUploadFields), async (req, res) => {
     const applicationId = req.params.applicationId;
@@ -496,7 +622,15 @@ router.delete('/:applicationId', async (req, res) => {
             `SELECT pi_photograph_s3_key AS s3_key FROM principal_investigators WHERE application_id = ?`,
             `SELECT co_pi_photograph_s3_key AS s3_key FROM co_investigators WHERE application_id = ?`,
             `SELECT staff_agreement_s3_key AS s3_key FROM project_staff WHERE application_id = ?`,
-            `SELECT document_s3_key FROM internal_budget_travel WHERE application_id = ?`,
+            `SELECT equipment_bills_s3_key AS s3_key FROM project_equipments WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_travel WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_accommodation WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_fieldwork WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_stationery WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_dissemination WHERE application_id = ?`,
+            `SELECT document_s3_key AS s3_key FROM internal_budget_misc WHERE application_id = ?`,
+            `SELECT final_report_s3_key AS s3_key FROM project_deliverables WHERE application_id = ?` 
+
         ];
         
         for(const query of s3KeyQueries){

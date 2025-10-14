@@ -83,87 +83,51 @@ const genericBudgetRowTemplate = (prefix) => `
 </div>`;
 
 
-// ==========================================================
-// --- 2. HELPER FUNCTIONS
-// ==========================================================
-
-
-// function renderFileLinks(s3KeysJson, fileTypeLabel = 'Document') {
-//     if (!s3KeysJson) return '<span>N/A</span>';
-    
-//     let keys = [];
-//     try {
-//         const parsed = JSON.parse(s3KeysJson);
-//         if (Array.isArray(parsed)) {
-//             keys = parsed.filter(Boolean); 
-//         }
-//     } catch (e) {
-//         if (typeof s3KeysJson === 'string' && s3KeysJson.trim() !== '') {
-//             keys = [s3KeysJson];
-//         }
-//     }
-
-//     if (keys.length === 0) return '<span>N/A</span>';
-
-//     return keys.map((key, index) => {
-//         const fileName = key.split('/').pop();
-//         // This URL must point to a backend route that can stream the file from S3.
-//         // Assuming you have or will create such a route.
-//         const fileUrl = `/api/s3/view/${encodeURIComponent(key)}`;
-//         return `
-//             <a href="${fileUrl}" target="_blank" class="file-link" title="Click to open ${fileName} in a new tab">
-//                 <i class="fa-solid fa-file-arrow-down mr-2"></i>
-//                 ${fileTypeLabel} #${index + 1}
-//             </a>
-//         `;
-//     }).join(' '); // Using a space as a separator for multiple files
-// }
-
 // ========================================================================
-// === FIX: Replace the entire renderFileLinks function with this one.  ===
+// === FIX #1 (REVISED): Handles array of {key, name} objects
 // ========================================================================
 
-function renderFileLinks(fileData, fileTypeLabel = 'Document') {
-    // This function now robustly handles data that is already an array,
-    // a JSON string, or a single string key.
+// ====================================================================================
+// === FINAL FIX: Replace the entire renderFileLinks function with this version.
+// === This version now displays the actual original filename for each document.
+// ====================================================================================
+
+function renderFileLinks(fileData, fileTypeLabel = 'Document') { // fileTypeLabel is now a fallback
     if (!fileData) return '<span>N/A</span>';
 
-    let keys = [];
+    let fileObjects = [];
 
-    // 1. Check if the data is ALREADY a usable array (this is the main fix).
+    // Standard logic to parse the data into a usable array of objects
     if (Array.isArray(fileData)) {
-        keys = fileData.filter(Boolean); // Use it directly.
-    }
-    // 2. Else, if it's a string that looks like a JSON array, try to parse it.
-    else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        fileObjects = fileData;
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
         try {
             const parsed = JSON.parse(fileData);
-            if (Array.isArray(parsed)) {
-                keys = parsed.filter(Boolean);
-            }
-        } catch (e) {
-            // If parsing fails, treat it as a single file key if it's not empty.
-             if (fileData.trim() !== '') keys = [fileData];
-        }
-    }
-    // 3. As a fallback, handle a single, non-JSON string value.
-    else if (typeof fileData === 'string' && fileData.trim() !== '') {
-        keys = [fileData];
+            if (Array.isArray(parsed)) fileObjects = parsed;
+        } catch (e) { /* Ignore invalid JSON */ }
     }
 
-    if (keys.length === 0) return '<span>N/A</span>';
+    // Filter out any malformed entries (like null, or objects without a valid key/name)
+    const validFiles = fileObjects.filter(item => 
+        item && 
+        typeof item.key === 'string' && item.key.trim() !== '' &&
+        typeof item.name === 'string' && item.name.trim() !== ''
+    );
 
-    return keys.map((key, index) => {
-        const fileName = key.split('/').pop();
-        // The URL points to the server route responsible for streaming the file.
-        const fileUrl = `/api/s3/view/${encodeURIComponent(key)}`;
+    if (validFiles.length === 0) return '<span>N/A</span>';
+
+    // Map over the filtered array of objects to create the final HTML
+    return validFiles.map(file => {
+        const fileUrl = `/api/s3/view/${encodeURIComponent(file.key)}`;
+        const fileName = file.name; // Use the name property directly!
+
         return `
             <a href="${fileUrl}" target="_blank" class="file-link" title="Click to open ${fileName} in a new tab">
                 <i class="fa-solid fa-file-arrow-down mr-2"></i>
-                ${fileTypeLabel} #${index + 1}
+                ${fileName} 
             </a>
         `;
-    }).join(' '); // Use a space to separate multiple file links.
+    }).join(' '); // Use a space to separate multiple file links
 }
 
 function formatCurrency(value) {
@@ -224,21 +188,46 @@ function getFriendlyLabel(key) {
     return key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
 
+// ========================================================================
+// === FIX #2 (REVISED): Handles array of {key, name} objects for the form
+// ========================================================================
+
 function populateExistingFiles(container, fileData, hiddenInputDataRole) {
     if (!container) return;
     container.innerHTML = '<span class="text-sm text-gray-500">None</span>';
-    let fileKeys = [];
-    if (Array.isArray(fileData)) { fileKeys = fileData; }
-    else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) { try { fileKeys = JSON.parse(fileData); } catch (e) {} }
-    else if (typeof fileData === 'string' && fileData.trim() !== '') { fileKeys = [fileData]; }
-    if (fileKeys.length > 0 && fileKeys[0]) {
-        container.innerHTML = '';
-        fileKeys.forEach(key => {
-            if (!key) return;
-            const fileName = key.split('/').pop();
+
+    let fileObjects = [];
+
+    // Standard logic to parse the data into a usable array
+    if (Array.isArray(fileData)) {
+        fileObjects = fileData;
+    } else if (typeof fileData === 'string' && fileData.trim().startsWith('[')) {
+        try {
+            const parsed = JSON.parse(fileData);
+            if (Array.isArray(parsed)) fileObjects = parsed;
+        } catch (e) { /* Ignore invalid JSON */ }
+    }
+
+    if (fileObjects.length > 0) {
+        let hasValidFiles = false;
+        fileObjects.forEach(item => {
+            // Guard clause: ensure the item is a valid object with 'key' and 'name' properties.
+            if (!item || typeof item.key !== 'string' || !item.key.trim() || typeof item.name !== 'string') {
+                return; // Skip this malformed item.
+            }
+
+            if (!hasValidFiles) {
+                container.innerHTML = ''; // Clear the "None" message.
+                hasValidFiles = true;
+            }
+
+            const fileName = item.name; // Use the 'name' property for display.
+            const fileKey = item.key;   // Use the 'key' property for the hidden input value.
+
             const fileElement = document.createElement('div');
             fileElement.className = 'existing-file-item flex justify-between items-center p-1 bg-gray-100 border rounded';
-            fileElement.innerHTML = `<span class="text-sm truncate" title="${fileName}">${fileName}</span><button type="button" class="btn-remove-file text-red-500 font-bold text-lg leading-none">&times;</button><input type="hidden" data-role="${hiddenInputDataRole}" value="${key}">`;
+            // The value of the hidden input is now correctly set to the S3 key.
+            fileElement.innerHTML = `<span class="text-sm truncate" title="${fileName}">${fileName}</span><button type="button" class="btn-remove-file text-red-500 font-bold text-lg leading-none">&times;</button><input type="hidden" data-role="${hiddenInputDataRole}" value="${fileKey}">`;
             fileElement.querySelector('.btn-remove-file').addEventListener('click', () => fileElement.remove());
             container.appendChild(fileElement);
         });
